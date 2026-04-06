@@ -13,6 +13,24 @@ import java.time.Instant
 
 private const val TAG = "StepsSync"
 
+data class ExerciseSession(
+    val type: String,
+    val durationMin: Double,
+    val startTime: Instant,
+    val sourceApp: String
+)
+
+data class TodayData(
+    val steps: Long,
+    val distanceMetres: Double,
+    val caloriesActive: Double,
+    val caloriesTotal: Double,
+    val floors: Double,
+    val elevationMetres: Double,
+    val exerciseSessions: List<ExerciseSession>,
+    val recordCount: Int
+)
+
 /**
  * Reads movement data from Android's Health Connect system.
  *
@@ -104,6 +122,89 @@ object HealthConnectReader {
             put("device_id", "pixel-marvin")
             put("records", records)
         }
+    }
+
+    /**
+     * Read today's health data as structured Kotlin types for the UI layer.
+     * Unlike readAll() which returns JSON for the API, this returns data classes
+     * the ViewModel can display directly.
+     */
+    suspend fun readToday(context: Context): TodayData {
+        val end = Instant.now()
+        val start = end.atZone(java.time.ZoneId.systemDefault())
+            .toLocalDate().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
+
+        val client = HealthConnectClient.getOrCreate(context)
+        val filter = TimeRangeFilter.between(start, end)
+
+        var steps = 0L
+        var distance = 0.0
+        var caloriesActive = 0.0
+        var caloriesTotal = 0.0
+        var floors = 0.0
+        var elevation = 0.0
+        val exercises = mutableListOf<ExerciseSession>()
+        var recordCount = 0
+
+        try {
+            client.readRecords(ReadRecordsRequest(StepsRecord::class, filter)).records.forEach { r ->
+                steps += r.count; recordCount++
+            }
+        } catch (e: Exception) { Log.e(TAG, "readToday steps failed", e) }
+
+        try {
+            client.readRecords(ReadRecordsRequest(DistanceRecord::class, filter)).records.forEach { r ->
+                distance += r.distance.inMeters; recordCount++
+            }
+        } catch (e: Exception) { Log.e(TAG, "readToday distance failed", e) }
+
+        try {
+            client.readRecords(ReadRecordsRequest(ActiveCaloriesBurnedRecord::class, filter)).records.forEach { r ->
+                caloriesActive += r.energy.inKilocalories; recordCount++
+            }
+        } catch (e: Exception) { Log.e(TAG, "readToday caloriesActive failed", e) }
+
+        try {
+            client.readRecords(ReadRecordsRequest(TotalCaloriesBurnedRecord::class, filter)).records.forEach { r ->
+                caloriesTotal += r.energy.inKilocalories; recordCount++
+            }
+        } catch (e: Exception) { Log.e(TAG, "readToday caloriesTotal failed", e) }
+
+        try {
+            client.readRecords(ReadRecordsRequest(FloorsClimbedRecord::class, filter)).records.forEach { r ->
+                floors += r.floors; recordCount++
+            }
+        } catch (e: Exception) { Log.e(TAG, "readToday floors failed", e) }
+
+        try {
+            client.readRecords(ReadRecordsRequest(ElevationGainedRecord::class, filter)).records.forEach { r ->
+                elevation += r.elevation.inMeters; recordCount++
+            }
+        } catch (e: Exception) { Log.e(TAG, "readToday elevation failed", e) }
+
+        try {
+            client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class, filter)).records.forEach { r ->
+                val durationMin = java.time.Duration.between(r.startTime, r.endTime).toMinutes().toDouble()
+                exercises.add(ExerciseSession(
+                    type = exerciseTypeName(r.exerciseType),
+                    durationMin = durationMin,
+                    startTime = r.startTime,
+                    sourceApp = r.metadata.dataOrigin.packageName
+                ))
+                recordCount++
+            }
+        } catch (e: Exception) { Log.e(TAG, "readToday exercise failed", e) }
+
+        return TodayData(
+            steps = steps,
+            distanceMetres = distance,
+            caloriesActive = caloriesActive,
+            caloriesTotal = caloriesTotal,
+            floors = floors,
+            elevationMetres = elevation,
+            exerciseSessions = exercises,
+            recordCount = recordCount
+        )
     }
 
     /**
