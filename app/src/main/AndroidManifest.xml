@@ -21,7 +21,7 @@
         android:label="Steps"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Steps"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"
         tools:targetApi="34">
 
         <property
