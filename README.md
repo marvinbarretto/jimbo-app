@@ -1,14 +1,14 @@
 # Steps
 
-Lightweight Android app that reads health data from Health Connect and syncs it to the Jimbo API.
+Lightweight Android app that turns the phone into a telemetry source for Jimbo.
 
 ## What it does
 
-- Reads steps, distance, calories, floors, elevation, and exercise sessions from Health Connect
-- Displays today's stats on a simple Compose dashboard
-- Posts all records to Jimbo API (`/api/fitness/sync`)
-- Background sync every hour via WorkManager
-- 30-day backfill on first launch
+- Collects typed telemetry events from Health Connect, device state, and usage stats
+- Buffers events locally in Room before sync
+- Posts telemetry batches to Jimbo API (`/api/telemetry/events`)
+- Shows an operational status screen and settings screen in Compose
+- Syncs in the background via WorkManager with configurable network and battery constraints
 
 ## Setup
 
@@ -25,12 +25,16 @@ Lightweight Android app that reads health data from Health Connect and syncs it 
 
 3. On the phone, grant Health Connect permissions when prompted.
 
-4. You need a health data source (e.g. Google Fit) writing to Health Connect for data to appear.
+4. If you want usage telemetry, grant Usage Access in Android settings when prompted from the app settings screen.
+
+5. You need a health data source (e.g. Google Fit) writing to Health Connect for health events to appear.
 
 ## Tech stack
 
 - Kotlin, AGP 9.0.1
 - Jetpack Compose + Material 3
 - Health Connect API 1.1.0-alpha10
+- UsageStatsManager + Android system broadcasts
 - WorkManager for background sync
+- Room for local event buffering and settings
 - No external HTTP libraries — uses HttpsURLConnection with trust-all TLS (self-signed cert on VPS)

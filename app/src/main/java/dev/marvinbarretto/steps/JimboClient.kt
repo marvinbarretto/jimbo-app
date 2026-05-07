@@ -11,7 +11,7 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
 /**
- * HTTP client that POSTs fitness data to the Jimbo API.
+ * HTTP client that POSTs telemetry data to the Jimbo API.
  *
  * Uses a trust-all TLS configuration because Jimbo runs behind a
  * self-signed certificate on the VPS. This is acceptable for a
@@ -26,12 +26,6 @@ object JimboClient {
         override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
         override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
     })
-
-    /**
-     * Returns (httpStatusCode, responseBody) so the caller can check success.
-     */
-    fun postSync(jsonBody: String): Pair<Int, String> =
-        postJson("/api/fitness/sync", jsonBody)
 
     fun postTelemetryEvents(jsonBody: String): Pair<Int, String> =
         postJson("/api/telemetry/events", jsonBody)
