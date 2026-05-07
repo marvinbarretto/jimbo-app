@@ -7,10 +7,15 @@ import android.os.BatteryManager
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import dev.marvinbarretto.steps.telemetry.TelemetryStore
 import dev.marvinbarretto.steps.telemetry.TelemetryDrainOutcome
 import dev.marvinbarretto.steps.telemetry.TelemetrySyncer
+import dev.marvinbarretto.steps.telemetry.TimeWindow
+import java.time.Duration
+import java.time.Instant
 
 private const val TAG = "StepsSync"
+private const val SYNC_WINDOW_HOURS = 2L
 
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -19,6 +24,15 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             Log.d(TAG, "Skipping telemetry sync because battery is low and device is not charging")
             return Result.retry()
         }
+
+        val now = Instant.now()
+        val telemetryStore = TelemetryStore(applicationContext)
+        telemetryStore.collect(
+            TimeWindow(
+                start = now.minus(Duration.ofHours(SYNC_WINDOW_HOURS)),
+                end = now
+            )
+        )
 
         return when (TelemetrySyncer(applicationContext).drainPending()) {
             is TelemetryDrainOutcome.Success -> Result.success()

@@ -14,7 +14,10 @@ class TelemetryStore(private val context: Context) {
     private val eventDao = database.eventDao()
     private val registry = CollectorRegistry(
         settingDao = database.collectorSettingDao(),
-        collectors = listOf(HealthConnectCollector(context))
+        collectors = listOf(
+            HealthConnectCollector(context),
+            DeviceCollector(context)
+        )
     )
 
     suspend fun collect(window: TimeWindow): Int {
@@ -33,6 +36,11 @@ class TelemetryStore(private val context: Context) {
         val pending = eventDao.pendingCount()
         Log.d(TAG, "Queued ${events.size} telemetry events, pending=$pending")
         return events.size
+    }
+
+    suspend fun collectBroadcast(action: String): Int {
+        val now = java.time.Instant.now()
+        return collect(TimeWindow(start = now, end = now, triggerAction = action))
     }
 
     suspend fun pendingCount(): Int = eventDao.pendingCount()

@@ -19,7 +19,8 @@ sealed interface CollectorCadence {
 
 data class TimeWindow(
     val start: Instant,
-    val end: Instant
+    val end: Instant,
+    val triggerAction: String? = null
 )
 
 data class RawEvent(
