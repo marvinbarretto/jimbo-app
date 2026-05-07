@@ -130,7 +130,7 @@ internal data class AppUsageSummary(
 
 internal fun hasUsageAccess(context: Context): Boolean {
     val appOps = context.getSystemService(AppOpsManager::class.java) ?: return false
-    val mode = appOps.checkOpNoThrow(
+    val mode = appOps.unsafeCheckOpNoThrow(
         AppOpsManager.OPSTR_GET_USAGE_STATS,
         Process.myUid(),
         context.packageName
@@ -185,12 +185,10 @@ internal fun topAppUsage(
     events.sortedBy { it.timestamp }.forEach { event ->
         val pkg = event.packageName ?: return@forEach
         when (event.eventType) {
-            UsageEvents.Event.MOVE_TO_FOREGROUND,
             UsageEvents.Event.ACTIVITY_RESUMED -> {
                 foregroundStarts[pkg] = event.timestamp
             }
 
-            UsageEvents.Event.MOVE_TO_BACKGROUND,
             UsageEvents.Event.ACTIVITY_PAUSED -> {
                 val start = foregroundStarts.remove(pkg) ?: return@forEach
                 if (!event.timestamp.isBefore(start)) {

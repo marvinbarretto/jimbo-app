@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.util.Log
@@ -17,6 +18,7 @@ private const val TAG = "DeviceCollector"
 private const val PREFS = "device_collector"
 private const val BATTERY_PERIOD_MINUTES = 30L
 private const val BROADCAST_DEBOUNCE_SECONDS = 30L
+const val ACTION_NETWORK_STATE_CHANGED = "dev.marvinbarretto.steps.action.NETWORK_STATE_CHANGED"
 
 class DeviceCollector(
     private val context: Context
@@ -28,7 +30,7 @@ class DeviceCollector(
             Intent.ACTION_BATTERY_CHANGED,
             Intent.ACTION_POWER_CONNECTED,
             Intent.ACTION_POWER_DISCONNECTED,
-            ConnectivityManager.CONNECTIVITY_ACTION
+            ACTION_NETWORK_STATE_CHANGED
         )
     )
 
@@ -70,7 +72,7 @@ class DeviceCollector(
             }
         }
 
-        if (action == ConnectivityManager.CONNECTIVITY_ACTION) {
+        if (action == ACTION_NETWORK_STATE_CHANGED) {
             currentNetworkSnapshot(context)?.let { snapshot ->
                 if (shouldEmitNetwork(now, snapshot)) {
                     events += RawEvent(
@@ -168,8 +170,8 @@ internal fun currentNetworkSnapshot(context: Context): NetworkSnapshot? {
     val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
     val kind = networkKind(capabilities)
     val ssidHash = if (kind == "wifi") {
-        val wifiManager = context.applicationContext.getSystemService(WifiManager::class.java)
-        ssidHash(wifiManager?.connectionInfo?.ssid)
+        val wifiInfo = capabilities?.transportInfo as? WifiInfo
+        ssidHash(wifiInfo?.ssid)
     } else {
         null
     }

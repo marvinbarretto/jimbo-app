@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +16,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import dev.marvinbarretto.steps.telemetry.TelemetryStore
+import dev.marvinbarretto.steps.telemetry.ACTION_NETWORK_STATE_CHANGED
 import dev.marvinbarretto.steps.ui.StepsApp
 import dev.marvinbarretto.steps.ui.theme.StepsTheme
 import kotlinx.coroutines.launch
@@ -24,6 +27,8 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val telemetryStore by lazy { TelemetryStore(this) }
     private var deviceReceiverRegistered = false
+    private var networkCallbackRegistered = false
+    private val connectivityManager by lazy { getSystemService(ConnectivityManager::class.java) }
 
     private val deviceStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -31,6 +36,20 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch {
                 telemetryStore.collectBroadcast(action)
             }
+        }
+    }
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            collectNetworkState()
+        }
+
+        override fun onLost(network: Network) {
+            collectNetworkState()
+        }
+
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            collectNetworkState()
         }
     }
 
@@ -78,6 +97,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         registerDeviceReceiver()
+        registerNetworkCallback()
         statusViewModel.refreshStatus()
         settingsViewModel.refresh()
     }
@@ -87,6 +107,7 @@ class MainActivity : ComponentActivity() {
             unregisterReceiver(deviceStateReceiver)
             deviceReceiverRegistered = false
         }
+        unregisterNetworkCallback()
         super.onStop()
     }
 
@@ -99,7 +120,6 @@ class MainActivity : ComponentActivity() {
             addAction(Intent.ACTION_BATTERY_CHANGED)
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
-            addAction(ConnectivityManager.CONNECTIVITY_ACTION)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -108,5 +128,27 @@ class MainActivity : ComponentActivity() {
             registerReceiver(deviceStateReceiver, filter)
         }
         deviceReceiverRegistered = true
+    }
+
+    private fun registerNetworkCallback() {
+        if (networkCallbackRegistered) {
+            return
+        }
+        connectivityManager?.registerDefaultNetworkCallback(networkCallback)
+        networkCallbackRegistered = true
+    }
+
+    private fun unregisterNetworkCallback() {
+        if (!networkCallbackRegistered) {
+            return
+        }
+        connectivityManager?.unregisterNetworkCallback(networkCallback)
+        networkCallbackRegistered = false
+    }
+
+    private fun collectNetworkState() {
+        lifecycleScope.launch {
+            telemetryStore.collectBroadcast(ACTION_NETWORK_STATE_CHANGED)
+        }
     }
 }

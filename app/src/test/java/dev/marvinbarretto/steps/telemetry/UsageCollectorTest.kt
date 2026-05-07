@@ -31,12 +31,12 @@ class UsageCollectorTest {
     fun topAppUsageRollsForegroundDurationsAndLimitsOrdering() {
         val summaries = topAppUsage(
             listOf(
-                usageEvent(UsageEvents.Event.MOVE_TO_FOREGROUND, "2026-05-07T10:00:00Z", "a"),
-                usageEvent(UsageEvents.Event.MOVE_TO_BACKGROUND, "2026-05-07T10:05:00Z", "a"),
-                usageEvent(UsageEvents.Event.MOVE_TO_FOREGROUND, "2026-05-07T10:06:00Z", "b"),
-                usageEvent(UsageEvents.Event.MOVE_TO_BACKGROUND, "2026-05-07T10:20:00Z", "b"),
-                usageEvent(UsageEvents.Event.MOVE_TO_FOREGROUND, "2026-05-07T10:21:00Z", "a"),
-                usageEvent(UsageEvents.Event.MOVE_TO_BACKGROUND, "2026-05-07T10:23:00Z", "a"),
+                usageEvent(UsageEvents.Event.ACTIVITY_RESUMED, "2026-05-07T10:00:00Z", "a"),
+                usageEvent(UsageEvents.Event.ACTIVITY_PAUSED, "2026-05-07T10:05:00Z", "a"),
+                usageEvent(UsageEvents.Event.ACTIVITY_RESUMED, "2026-05-07T10:06:00Z", "b"),
+                usageEvent(UsageEvents.Event.ACTIVITY_PAUSED, "2026-05-07T10:20:00Z", "b"),
+                usageEvent(UsageEvents.Event.ACTIVITY_RESUMED, "2026-05-07T10:21:00Z", "a"),
+                usageEvent(UsageEvents.Event.ACTIVITY_PAUSED, "2026-05-07T10:23:00Z", "a"),
             ),
         ) { pkg -> "label:$pkg" }
 
