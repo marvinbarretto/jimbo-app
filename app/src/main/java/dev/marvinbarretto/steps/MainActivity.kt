@@ -15,14 +15,14 @@ import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import androidx.work.*
 import dev.marvinbarretto.steps.telemetry.TelemetryStore
-import dev.marvinbarretto.steps.ui.StepsScreen
+import dev.marvinbarretto.steps.ui.StatusScreen
 import dev.marvinbarretto.steps.ui.theme.StepsTheme
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: StepsViewModel by viewModels()
+    private val viewModel: StatusViewModel by viewModels()
     private val telemetryStore by lazy { TelemetryStore(this) }
     private var deviceReceiverRegistered = false
 
@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
     ) { granted ->
         if (granted.containsAll(HealthConnectReader.PERMISSIONS)) {
             scheduleSync()
-            viewModel.loadAndSync()
+            viewModel.refreshStatus()
         }
     }
 
@@ -49,27 +49,23 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             StepsTheme {
-                StepsScreen(viewModel)
+                StatusScreen(viewModel)
             }
-        }
-
-        val available = HealthConnectClient.getSdkStatus(this)
-        if (available != HealthConnectClient.SDK_AVAILABLE) {
-            android.util.Log.e("StepsSync", "Health Connect not available: $available")
-            return
         }
 
         lifecycleScope.launch {
             try {
-                val client = HealthConnectClient.getOrCreate(this@MainActivity)
-                val granted = client.permissionController.getGrantedPermissions()
+                scheduleSync()
 
-                if (granted.containsAll(HealthConnectReader.PERMISSIONS)) {
-                    scheduleSync()
-                    viewModel.loadAndSync()
-                } else {
-                    requestPermissions.launch(HealthConnectReader.PERMISSIONS)
+                val available = HealthConnectClient.getSdkStatus(this@MainActivity)
+                if (available == HealthConnectClient.SDK_AVAILABLE) {
+                    val client = HealthConnectClient.getOrCreate(this@MainActivity)
+                    val granted = client.permissionController.getGrantedPermissions()
+                    if (!granted.containsAll(HealthConnectReader.PERMISSIONS)) {
+                        requestPermissions.launch(HealthConnectReader.PERMISSIONS)
+                    }
                 }
+                viewModel.refreshStatus()
             } catch (e: Exception) {
                 android.util.Log.e("StepsSync", "Error in permission check", e)
             }
@@ -79,6 +75,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         registerDeviceReceiver()
+        viewModel.refreshStatus()
     }
 
     override fun onStop() {

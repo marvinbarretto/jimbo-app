@@ -5,6 +5,12 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
+data class CollectorEventSummary(
+    val collector: String,
+    val lastSeenAt: Long,
+    val eventCount: Int
+)
+
 @Dao
 interface EventDao {
 
@@ -41,4 +47,14 @@ interface EventDao {
 
     @Query("SELECT COUNT(*) FROM events WHERE deadLetter = 1")
     suspend fun deadLetterCount(): Int
+
+    @Query(
+        """
+        SELECT collector, MAX(createdAt) AS lastSeenAt, COUNT(*) AS eventCount
+        FROM events
+        GROUP BY collector
+        ORDER BY collector ASC
+        """
+    )
+    suspend fun collectorSummaries(): List<CollectorEventSummary>
 }
