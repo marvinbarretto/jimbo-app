@@ -16,7 +16,8 @@ class TelemetryStore(private val context: Context) {
         settingDao = database.collectorSettingDao(),
         collectors = listOf(
             HealthConnectCollector(context),
-            DeviceCollector(context)
+            DeviceCollector(context),
+            UsageCollector(context)
         )
     )
 
