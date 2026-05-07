@@ -64,10 +64,15 @@ class MainActivity : ComponentActivity() {
             15, TimeUnit.MINUTES
         ).setConstraints(
             Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
+                .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build()
-        ).build()
+        )
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                10,
+                TimeUnit.SECONDS
+            )
+            .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "steps_sync",

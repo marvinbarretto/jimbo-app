@@ -28,14 +28,20 @@ object JimboClient {
     })
 
     /**
-     * POST a JSON payload to /api/fitness/sync.
      * Returns (httpStatusCode, responseBody) so the caller can check success.
-     *
+     */
+    fun postSync(jsonBody: String): Pair<Int, String> =
+        postJson("/api/fitness/sync", jsonBody)
+
+    fun postTelemetryEvents(jsonBody: String): Pair<Int, String> =
+        postJson("/api/telemetry/events", jsonBody)
+
+    /**
      * BuildConfig.JIMBO_API_URL and JIMBO_API_KEY are injected at build time
      * from local.properties via build.gradle.kts — similar to .env vars in JS.
      */
-    fun postSync(jsonBody: String): Pair<Int, String> {
-        val endpoint = "${BuildConfig.JIMBO_API_URL}/api/fitness/sync"
+    private fun postJson(path: String, jsonBody: String): Pair<Int, String> {
+        val endpoint = "${BuildConfig.JIMBO_API_URL}$path"
         android.util.Log.d("StepsSync", "POST $endpoint (${jsonBody.length} bytes)")
         val url = URL(endpoint)
 
