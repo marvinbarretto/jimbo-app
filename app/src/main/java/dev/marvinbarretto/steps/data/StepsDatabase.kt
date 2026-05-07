@@ -7,7 +7,6 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [
-        HealthRecordEntity::class,
         EventEntity::class,
         CollectorSettingEntity::class
     ],
@@ -16,7 +15,6 @@ import androidx.room.RoomDatabase
 )
 abstract class StepsDatabase : RoomDatabase() {
 
-    abstract fun healthRecordDao(): HealthRecordDao
     abstract fun eventDao(): EventDao
     abstract fun collectorSettingDao(): CollectorSettingDao
 

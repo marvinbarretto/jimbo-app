@@ -5,6 +5,10 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.marvinbarretto.steps.telemetry.TelemetryDrainOutcome
+import dev.marvinbarretto.steps.telemetry.TelemetryStore
+import dev.marvinbarretto.steps.telemetry.TelemetrySyncer
+import dev.marvinbarretto.steps.telemetry.TimeWindow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +17,7 @@ import java.time.Duration
 import java.time.Instant
 
 private const val TAG = "StepsViewModel"
+private const val SYNC_WINDOW_HOURS = 2L
 
 enum class SyncStatus { IDLE, LOADING, SYNCING, SUCCESS, ERROR }
 
@@ -20,7 +25,8 @@ data class StepsUiState(
     val todayData: TodayData? = null,
     val syncStatus: SyncStatus = SyncStatus.IDLE,
     val lastSyncTime: Long? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val pendingRecords: Int = 0
 )
 
 class StepsViewModel(application: Application) : AndroidViewModel(application) {
@@ -29,9 +35,15 @@ class StepsViewModel(application: Application) : AndroidViewModel(application) {
     val state: StateFlow<StepsUiState> = _state
 
     private val prefs = application.getSharedPreferences("steps_sync", Context.MODE_PRIVATE)
+    private val telemetryStore = TelemetryStore(application)
+    private val telemetrySyncer = TelemetrySyncer(application)
 
     init {
         _state.value = _state.value.copy(lastSyncTime = prefs.getLong("last_sync", 0).takeIf { it > 0 })
+        viewModelScope.launch(Dispatchers.IO) {
+            val pending = telemetryStore.pendingCount()
+            _state.value = _state.value.copy(pendingRecords = pending)
+        }
     }
 
     fun loadToday() {
@@ -55,41 +67,18 @@ class StepsViewModel(application: Application) : AndroidViewModel(application) {
             _state.value = _state.value.copy(syncStatus = SyncStatus.SYNCING, errorMessage = null)
             try {
                 val end = Instant.now()
-                val start = end.minus(Duration.ofHours(2))
-                val payload = HealthConnectReader.readAll(getApplication(), start, end)
-                val count = payload.getJSONArray("records").length()
-
-                if (count == 0) {
-                    _state.value = _state.value.copy(syncStatus = SyncStatus.SUCCESS)
-                    return@launch
-                }
-
-                val (code, body) = JimboClient.postSync(payload.toString())
-                if (code in 200..299) {
-                    val now = System.currentTimeMillis()
-                    prefs.edit().putLong("last_sync", now).apply()
-                    _state.value = _state.value.copy(
-                        syncStatus = SyncStatus.SUCCESS,
-                        lastSyncTime = now
-                    )
-                } else {
-                    _state.value = _state.value.copy(
-                        syncStatus = SyncStatus.ERROR,
-                        errorMessage = "Sync failed (HTTP $code): $body"
-                    )
-                }
+                val start = end.minus(Duration.ofHours(SYNC_WINDOW_HOURS))
+                collectAndSync(TimeWindow(start, end))
             } catch (e: Exception) {
                 Log.e(TAG, "syncNow failed", e)
                 _state.value = _state.value.copy(
                     syncStatus = SyncStatus.ERROR,
-                    errorMessage = "Sync error: ${e.message}"
+                    errorMessage = "Sync error: ${e.message}",
+                    pendingRecords = telemetryStore.pendingCount()
                 )
             }
 
-            try {
-                val data = HealthConnectReader.readToday(getApplication())
-                _state.value = _state.value.copy(todayData = data)
-            } catch (_: Exception) {}
+            refreshTodaySilently()
         }
     }
 
@@ -111,36 +100,59 @@ class StepsViewModel(application: Application) : AndroidViewModel(application) {
 
             _state.value = _state.value.copy(syncStatus = SyncStatus.SYNCING)
             try {
-                val lastSync = prefs.getLong("last_sync", 0)
                 val end = Instant.now()
-                val start = if (lastSync == 0L) {
-                    end.minus(Duration.ofDays(30))
-                } else {
-                    end.minus(Duration.ofHours(2))
-                }
-
-                val payload = HealthConnectReader.readAll(getApplication(), start, end)
-                val count = payload.getJSONArray("records").length()
-
-                if (count > 0) {
-                    val (code, _) = JimboClient.postSync(payload.toString())
-                    if (code in 200..299) {
-                        val now = System.currentTimeMillis()
-                        prefs.edit().putLong("last_sync", now).apply()
-                        _state.value = _state.value.copy(syncStatus = SyncStatus.SUCCESS, lastSyncTime = now)
-                    } else {
-                        _state.value = _state.value.copy(syncStatus = SyncStatus.ERROR, errorMessage = "Sync HTTP $code")
-                    }
-                } else {
-                    _state.value = _state.value.copy(syncStatus = SyncStatus.SUCCESS)
-                }
+                val start = end.minus(Duration.ofHours(SYNC_WINDOW_HOURS))
+                collectAndSync(TimeWindow(start, end))
             } catch (e: Exception) {
                 Log.e(TAG, "loadAndSync sync failed", e)
                 _state.value = _state.value.copy(
                     syncStatus = SyncStatus.ERROR,
-                    errorMessage = "Sync error: ${e.message}"
+                    errorMessage = "Sync error: ${e.message}",
+                    pendingRecords = telemetryStore.pendingCount()
                 )
             }
+        }
+    }
+
+    private suspend fun collectAndSync(window: TimeWindow) {
+        telemetryStore.collect(window)
+        val pendingAfterCollect = telemetryStore.pendingCount()
+        Log.d(TAG, "Telemetry pending after collect: $pendingAfterCollect")
+
+        when (val outcome = telemetrySyncer.drainPending()) {
+            is TelemetryDrainOutcome.Success -> {
+                val now = System.currentTimeMillis()
+                prefs.edit().putLong("last_sync", now).apply()
+                _state.value = _state.value.copy(
+                    syncStatus = SyncStatus.SUCCESS,
+                    lastSyncTime = now,
+                    pendingRecords = telemetryStore.pendingCount()
+                )
+            }
+
+            is TelemetryDrainOutcome.RetryableFailure -> {
+                _state.value = _state.value.copy(
+                    syncStatus = SyncStatus.ERROR,
+                    errorMessage = "Sync will retry later",
+                    pendingRecords = outcome.pendingCount
+                )
+            }
+
+            is TelemetryDrainOutcome.PermanentFailure -> {
+                _state.value = _state.value.copy(
+                    syncStatus = SyncStatus.ERROR,
+                    errorMessage = "Sync failed; some events moved to dead-letter",
+                    pendingRecords = outcome.pendingCount
+                )
+            }
+        }
+    }
+
+    private suspend fun refreshTodaySilently() {
+        try {
+            val data = HealthConnectReader.readToday(getApplication())
+            _state.value = _state.value.copy(todayData = data)
+        } catch (_: Exception) {
         }
     }
 }
