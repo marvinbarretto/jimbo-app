@@ -13,16 +13,15 @@ import androidx.activity.viewModels
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
-import androidx.work.*
 import dev.marvinbarretto.steps.telemetry.TelemetryStore
-import dev.marvinbarretto.steps.ui.StatusScreen
+import dev.marvinbarretto.steps.ui.StepsApp
 import dev.marvinbarretto.steps.ui.theme.StepsTheme
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: StatusViewModel by viewModels()
+    private val statusViewModel: StatusViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
     private val telemetryStore by lazy { TelemetryStore(this) }
     private var deviceReceiverRegistered = false
 
@@ -39,8 +38,8 @@ class MainActivity : ComponentActivity() {
         PermissionController.createRequestPermissionResultContract()
     ) { granted ->
         if (granted.containsAll(HealthConnectReader.PERMISSIONS)) {
-            scheduleSync()
-            viewModel.refreshStatus()
+            SyncScheduler.schedulePeriodic(this)
+            statusViewModel.refreshStatus()
         }
     }
 
@@ -49,13 +48,16 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             StepsTheme {
-                StatusScreen(viewModel)
+                StepsApp(
+                    statusViewModel = statusViewModel,
+                    settingsViewModel = settingsViewModel
+                )
             }
         }
 
         lifecycleScope.launch {
             try {
-                scheduleSync()
+                SyncScheduler.schedulePeriodic(this@MainActivity)
 
                 val available = HealthConnectClient.getSdkStatus(this@MainActivity)
                 if (available == HealthConnectClient.SDK_AVAILABLE) {
@@ -65,7 +67,8 @@ class MainActivity : ComponentActivity() {
                         requestPermissions.launch(HealthConnectReader.PERMISSIONS)
                     }
                 }
-                viewModel.refreshStatus()
+                statusViewModel.refreshStatus()
+                settingsViewModel.refresh()
             } catch (e: Exception) {
                 android.util.Log.e("StepsSync", "Error in permission check", e)
             }
@@ -75,7 +78,8 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         registerDeviceReceiver()
-        viewModel.refreshStatus()
+        statusViewModel.refreshStatus()
+        settingsViewModel.refresh()
     }
 
     override fun onStop() {
@@ -84,29 +88,6 @@ class MainActivity : ComponentActivity() {
             deviceReceiverRegistered = false
         }
         super.onStop()
-    }
-
-    private fun scheduleSync() {
-        val request = PeriodicWorkRequestBuilder<SyncWorker>(
-            30, TimeUnit.MINUTES,
-            15, TimeUnit.MINUTES
-        ).setConstraints(
-            Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.UNMETERED)
-                .build()
-        )
-            .setBackoffCriteria(
-                BackoffPolicy.EXPONENTIAL,
-                10,
-                TimeUnit.SECONDS
-            )
-            .build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "steps_sync",
-            ExistingPeriodicWorkPolicy.KEEP,
-            request
-        )
     }
 
     private fun registerDeviceReceiver() {

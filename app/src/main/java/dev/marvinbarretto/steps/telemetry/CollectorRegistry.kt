@@ -28,6 +28,16 @@ class CollectorRegistry(
         }
     }
 
+    suspend fun allCollectors(): List<Collector> {
+        seedDefaults()
+        return collectorMap.values.toList()
+    }
+
+    suspend fun collectorStates(): Map<String, Boolean> {
+        seedDefaults()
+        return settingDao.getAll().associate { it.collectorId to it.enabled }
+    }
+
     suspend fun setEnabled(collectorId: String, enabled: Boolean) {
         settingDao.upsert(CollectorSettingEntity(collectorId = collectorId, enabled = enabled))
     }

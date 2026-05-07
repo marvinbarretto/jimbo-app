@@ -7,6 +7,7 @@ import android.os.BatteryManager
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import dev.marvinbarretto.steps.telemetry.SyncConstraintsRepository
 import dev.marvinbarretto.steps.telemetry.TelemetryStore
 import dev.marvinbarretto.steps.telemetry.TelemetryDrainOutcome
 import dev.marvinbarretto.steps.telemetry.TelemetrySyncer
@@ -20,7 +21,8 @@ private const val SYNC_WINDOW_HOURS = 2L
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        if (!isBatteryHealthyOrCharging()) {
+        val minBatteryPercent = SyncConstraintsRepository(applicationContext).get().minBatteryPercent
+        if (!isBatteryHealthyOrCharging(minBatteryPercent)) {
             Log.d(TAG, "Skipping telemetry sync because battery is low and device is not charging")
             return Result.retry()
         }
@@ -41,7 +43,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
     }
 
-    private fun isBatteryHealthyOrCharging(): Boolean {
+    private fun isBatteryHealthyOrCharging(minBatteryPercent: Int): Boolean {
         val batteryIntent = applicationContext.registerReceiver(
             null,
             IntentFilter(Intent.ACTION_BATTERY_CHANGED)
@@ -61,7 +63,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             return true
         }
 
-        val batteryPercent = level.toFloat() / scale.toFloat()
-        return batteryPercent > 0.15f
+        val batteryPercent = level.toFloat() / scale.toFloat() * 100f
+        return batteryPercent > minBatteryPercent.toFloat()
     }
 }

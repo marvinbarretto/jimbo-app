@@ -11,6 +11,24 @@ data class CollectorEventSummary(
     val eventCount: Int
 )
 
+data class CollectorRecentSummary(
+    val collector: String,
+    val lastSeenAt: Long?,
+    val eventCountLast24h: Int
+)
+
+data class DeadLetterEventSummary(
+    val id: String,
+    val collector: String,
+    val type: String,
+    val ts: String,
+    val payload: String?,
+    val value: Double?,
+    val unit: String?,
+    val source: String?,
+    val attempts: Int
+)
+
 @Dao
 interface EventDao {
 
@@ -50,6 +68,19 @@ interface EventDao {
 
     @Query(
         """
+        SELECT
+            collector,
+            MAX(createdAt) AS lastSeenAt,
+            SUM(CASE WHEN createdAt >= :since THEN 1 ELSE 0 END) AS eventCountLast24h
+        FROM events
+        GROUP BY collector
+        ORDER BY collector ASC
+        """
+    )
+    suspend fun collectorRecentSummaries(since: Long): List<CollectorRecentSummary>
+
+    @Query(
+        """
         SELECT collector, MAX(createdAt) AS lastSeenAt, COUNT(*) AS eventCount
         FROM events
         GROUP BY collector
@@ -57,4 +88,39 @@ interface EventDao {
         """
     )
     suspend fun collectorSummaries(): List<CollectorEventSummary>
+
+    @Query(
+        """
+        SELECT
+            COALESCE(SUM(
+                LENGTH(id) +
+                LENGTH(collector) +
+                LENGTH(type) +
+                LENGTH(ts) +
+                COALESCE(LENGTH(tsEnd), 0) +
+                COALESCE(LENGTH(unit), 0) +
+                COALESCE(LENGTH(source), 0) +
+                COALESCE(LENGTH(payload), 0)
+            ), 0)
+        FROM events
+        WHERE syncedAt IS NULL AND deadLetter = 0
+        """
+    )
+    suspend fun pendingQueuedBytes(): Long
+
+    @Query(
+        """
+        SELECT id, collector, type, ts, payload, value, unit, source, attempts
+        FROM events
+        WHERE deadLetter = 1
+        ORDER BY createdAt DESC
+        """
+    )
+    suspend fun deadLetterEvents(): List<DeadLetterEventSummary>
+
+    @Query("UPDATE events SET deadLetter = 0 WHERE id = :id")
+    suspend fun retryDeadLetter(id: String)
+
+    @Query("DELETE FROM events WHERE id = :id")
+    suspend fun deleteEvent(id: String)
 }

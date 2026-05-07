@@ -4,9 +4,6 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
@@ -19,7 +16,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 
 data class CollectorStatus(
     val collectorId: String,
@@ -76,7 +72,7 @@ class StatusViewModel(application: Application) : AndroidViewModel(application) 
             val workInfos = workManager
                 .getWorkInfos(
                     WorkQuery.Builder
-                        .fromUniqueWorkNames(listOf("steps_sync", MANUAL_SYNC_WORK_NAME))
+                        .fromUniqueWorkNames(listOf(SyncScheduler.periodicWorkName(), SyncScheduler.manualWorkName()))
                         .build()
                 )
                 .get()
@@ -106,26 +102,7 @@ class StatusViewModel(application: Application) : AndroidViewModel(application) 
 
     fun syncNow() {
         viewModelScope.launch(Dispatchers.IO) {
-            val request = OneTimeWorkRequestBuilder<SyncWorker>()
-                .setConstraints(
-                    androidx.work.Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.UNMETERED)
-                        .build()
-                )
-                .setBackoffCriteria(
-                    androidx.work.BackoffPolicy.EXPONENTIAL,
-                    10,
-                    TimeUnit.SECONDS
-                )
-                .addTag(MANUAL_SYNC_WORK_NAME)
-                .build()
-
-            workManager.enqueueUniqueWork(
-                MANUAL_SYNC_WORK_NAME,
-                ExistingWorkPolicy.KEEP,
-                request
-            )
-
+            SyncScheduler.enqueueManualSync(getApplication())
             refreshStatus()
         }
     }
@@ -142,8 +119,4 @@ class StatusViewModel(application: Application) : AndroidViewModel(application) 
             lastSeenAt = summary.lastSeenAt,
             eventCount = summary.eventCount
         )
-
-    companion object {
-        private const val MANUAL_SYNC_WORK_NAME = "steps_sync_manual"
-    }
 }

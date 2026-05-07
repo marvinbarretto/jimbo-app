@@ -86,6 +86,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.viewmodel.compose)
+    implementation(libs.navigation.compose)
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.room:room-testing:2.7.0-alpha12")
     testImplementation("androidx.test:core:1.6.1")

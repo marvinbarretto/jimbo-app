@@ -8,15 +8,17 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [
         EventEntity::class,
-        CollectorSettingEntity::class
+        CollectorSettingEntity::class,
+        SyncConstraintEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class StepsDatabase : RoomDatabase() {
 
     abstract fun eventDao(): EventDao
     abstract fun collectorSettingDao(): CollectorSettingDao
+    abstract fun syncConstraintDao(): SyncConstraintDao
 
     companion object {
         @Volatile
