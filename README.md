@@ -1,4 +1,4 @@
-# jimbo-android
+# jimbo-app
 
 Lightweight Android app that turns the phone into a telemetry source for Jimbo.
 
