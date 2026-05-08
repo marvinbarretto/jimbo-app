@@ -95,6 +95,11 @@ class MainActivity : ComponentActivity() {
                     ActivityRecognitionManager.register(this@MainActivity)
                 }
 
+                // Same re-registration requirement for location updates.
+                if (hasFineLocationPermission() && hasBackgroundLocationPermission()) {
+                    JimboLocationManager.register(this@MainActivity)
+                }
+
                 statusViewModel.refreshStatus()
                 settingsViewModel.refresh()
             } catch (e: Exception) {
@@ -157,6 +162,14 @@ class MainActivity : ComponentActivity() {
 
     fun hasActivityRecognitionPermission(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) ==
+            PackageManager.PERMISSION_GRANTED
+
+    fun hasFineLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+
+    fun hasBackgroundLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
 
     private fun collectNetworkState() {

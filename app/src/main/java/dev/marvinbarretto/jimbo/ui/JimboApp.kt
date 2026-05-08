@@ -2,9 +2,11 @@ package dev.marvinbarretto.jimbo.ui
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -13,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.marvinbarretto.jimbo.ActivityRecognitionManager
+import dev.marvinbarretto.jimbo.JimboLocationManager
 import dev.marvinbarretto.jimbo.SettingsViewModel
 import dev.marvinbarretto.jimbo.StatusViewModel
 
@@ -34,6 +37,25 @@ fun JimboApp(
             ActivityRecognitionManager.register(context)
             settingsViewModel.refresh()
         }
+    }
+
+    // Location is a two-step grant on Android 11+: fine location first (dialog),
+    // then background location separately (also a dialog, but opens the system
+    // location permission screen where the user selects "Allow all the time").
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            JimboLocationManager.register(context)
+            settingsViewModel.refresh()
+        }
+    }
+    val fineLocationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) settingsViewModel.refresh()
+        // Background location requested separately — user taps the button again
+        // after fine is granted, which then launches backgroundLocationLauncher.
     }
 
     NavHost(navController = navController, startDestination = "status") {
@@ -59,6 +81,16 @@ fun JimboApp(
                         "activity" -> activityPermissionLauncher.launch(
                             Manifest.permission.ACTIVITY_RECOGNITION
                         )
+                        "location" -> {
+                            val hasFine = ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.ACCESS_FINE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (!hasFine) {
+                                fineLocationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            } else {
+                                backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            }
+                        }
                         "notifications" -> context.startActivity(
                             Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
                         )

@@ -4,8 +4,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.google.android.gms.location.ActivityTransition
 import com.google.android.gms.location.ActivityTransitionResult
 import com.google.android.gms.location.DetectedActivity
+import dev.marvinbarretto.jimbo.telemetry.hasFineLocationPermission
+import dev.marvinbarretto.jimbo.telemetry.hasBackgroundLocationPermission
 import dev.marvinbarretto.jimbo.data.StepsDatabase
 import dev.marvinbarretto.jimbo.telemetry.RawEvent
 import dev.marvinbarretto.jimbo.telemetry.toEntity
@@ -53,7 +56,7 @@ class ActivityTransitionReceiver : BroadcastReceiver() {
                 ts = now,
                 payload = mapOf(
                     "activity_type" to activityTypeName(event.activityType),
-                    "transition" to if (event.transitionType == com.google.android.gms.location.ActivityTransition.ACTIVITY_TRANSITION_ENTER) "enter" else "exit"
+                    "transition" to if (event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) "enter" else "exit"
                 )
             )
         }
@@ -61,6 +64,17 @@ class ActivityTransitionReceiver : BroadcastReceiver() {
         if (events.isEmpty()) return
         database.eventDao().insertAll(events.map { it.toEntity() })
         Log.d(TAG, "Recorded ${events.size} activity transition(s): ${events.map { it.payload }}")
+
+        // Update location cadence to match movement state — faster when moving,
+        // slower when still. Only fires if location permissions are already granted.
+        if (hasFineLocationPermission(context) && hasBackgroundLocationPermission(context)) {
+            result.transitionEvents.forEach { event ->
+                if (event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
+                    val isMoving = event.activityType != DetectedActivity.STILL
+                    JimboLocationManager.updateCadence(context, isMoving)
+                }
+            }
+        }
     }
 }
 

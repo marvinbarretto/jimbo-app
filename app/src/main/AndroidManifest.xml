@@ -17,6 +17,10 @@
     <uses-permission android:name="android.permission.health.READ_ELEVATION_GAINED"/>
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"/>
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <!-- ACCESS_BACKGROUND_LOCATION must be requested separately after ACCESS_FINE_LOCATION
+         is granted — Android 11+ rejects requesting both in the same call. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
 
     <application
         android:networkSecurityConfig="@xml/network_security_config"
@@ -48,6 +52,10 @@
 
         <receiver
             android:name=".ActivityTransitionReceiver"
+            android:exported="false"/>
+
+        <receiver
+            android:name=".LocationUpdateReceiver"
             android:exported="false"/>
 
         <service
