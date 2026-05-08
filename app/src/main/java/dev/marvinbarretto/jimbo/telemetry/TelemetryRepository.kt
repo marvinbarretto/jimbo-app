@@ -1,6 +1,7 @@
 package dev.marvinbarretto.jimbo.telemetry
 
 import android.content.Context
+import androidx.core.app.NotificationManagerCompat
 import dev.marvinbarretto.jimbo.data.CollectorRecentSummary
 import dev.marvinbarretto.jimbo.data.DeadLetterEventSummary
 import dev.marvinbarretto.jimbo.data.StepsDatabase
@@ -41,7 +42,7 @@ class TelemetryRepository(private val context: Context) {
                 enabled = enabledStates[collector.id] ?: collector.defaultEnabled,
                 lastCollectedAt = summary?.lastSeenAt,
                 eventsLast24h = summary?.eventCountLast24h ?: 0,
-                permissionRequired = collector.id == "usage",
+                permissionRequired = collector.id in setOf("usage", "notifications"),
                 permissionGranted = permissionGranted
             )
         }
@@ -81,7 +82,8 @@ class TelemetryRepository(private val context: Context) {
 internal fun buildCollectors(context: Context): List<Collector> = listOf(
     HealthConnectCollector(context),
     DeviceCollector(context),
-    UsageCollector(context)
+    UsageCollector(context),
+    NotificationCollector()
 )
 
 internal fun cadenceLabel(cadence: CollectorCadence): String = when (cadence) {
@@ -101,10 +103,15 @@ internal fun collectorLabel(id: String): String = when (id) {
     "health_connect" -> "Health Connect"
     "device" -> "Device state"
     "usage" -> "Usage stats"
+    "notifications" -> "Notifications"
     else -> id
 }
 
 internal fun permissionGranted(context: Context, collectorId: String): Boolean = when (collectorId) {
     "usage" -> hasUsageAccess(context)
+    "notifications" -> hasNotificationListenerAccess(context)
     else -> true
 }
+
+internal fun hasNotificationListenerAccess(context: Context): Boolean =
+    NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)

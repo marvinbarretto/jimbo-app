@@ -90,7 +90,7 @@ fun SettingsScreen(
     onSyncNow: () -> Unit,
     onRefresh: () -> Unit,
     onCollectorToggle: (String, Boolean) -> Unit,
-    onOpenUsageAccess: () -> Unit,
+    onOpenPermissionSettings: (String) -> Unit,
     onWifiOnlyChanged: (Boolean) -> Unit,
     onBatteryThresholdChanged: (Int) -> Unit,
     onRetryDeadLetter: (String) -> Unit,
@@ -124,7 +124,7 @@ fun SettingsScreen(
             CollectorSettingsCard(
                 collectors = state.collectors,
                 onCollectorToggle = onCollectorToggle,
-                onOpenUsageAccess = onOpenUsageAccess
+                onOpenPermissionSettings = onOpenPermissionSettings
             )
 
             QueueCard(
@@ -239,7 +239,7 @@ private fun SyncConstraintCard(
 private fun CollectorSettingsCard(
     collectors: List<dev.marvinbarretto.jimbo.telemetry.CollectorDescriptor>,
     onCollectorToggle: (String, Boolean) -> Unit,
-    onOpenUsageAccess: () -> Unit
+    onOpenPermissionSettings: (String) -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -259,13 +259,31 @@ private fun CollectorSettingsCard(
                     Text("Last collected ${relativeTime(collector.lastCollectedAt)}", style = MaterialTheme.typography.bodySmall)
                     Text("${collector.eventsLast24h} events in last 24h", style = MaterialTheme.typography.bodySmall)
                     if (collector.permissionRequired && !collector.permissionGranted) {
-                        Text("Usage access required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = onOpenUsageAccess) { Text("Grant usage access") }
+                        Text(
+                            text = permissionRequiredLabel(collector.id),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        OutlinedButton(onClick = { onOpenPermissionSettings(collector.id) }) {
+                            Text(permissionActionLabel(collector.id))
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private fun permissionRequiredLabel(collectorId: String): String = when (collectorId) {
+    "usage" -> "Usage access required"
+    "notifications" -> "Notification access required"
+    else -> "Permission required"
+}
+
+private fun permissionActionLabel(collectorId: String): String = when (collectorId) {
+    "usage" -> "Grant usage access"
+    "notifications" -> "Grant notification access"
+    else -> "Grant access"
 }
 
 @Composable
@@ -322,6 +340,7 @@ private fun collectorName(id: String): String = when (id) {
     "health_connect" -> "Health Connect"
     "device" -> "Device"
     "usage" -> "Usage Stats"
+    "notifications" -> "Notifications"
     else -> id
 }
 

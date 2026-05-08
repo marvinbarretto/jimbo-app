@@ -38,8 +38,12 @@ fun JimboApp(
                     statusViewModel.refreshStatus()
                 },
                 onCollectorToggle = settingsViewModel::setCollectorEnabled,
-                onOpenUsageAccess = {
-                    context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                onOpenPermissionSettings = { collectorId ->
+                    val action = when (collectorId) {
+                        "notifications" -> Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS
+                        else -> Settings.ACTION_USAGE_ACCESS_SETTINGS
+                    }
+                    context.startActivity(Intent(action))
                 },
                 onWifiOnlyChanged = settingsViewModel::setWifiOnly,
                 onBatteryThresholdChanged = settingsViewModel::setMinBatteryPercent,
