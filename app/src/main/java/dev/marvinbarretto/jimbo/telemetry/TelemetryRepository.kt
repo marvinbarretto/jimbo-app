@@ -45,7 +45,7 @@ class TelemetryRepository(private val context: Context) {
                 enabled = enabledStates[collector.id] ?: collector.defaultEnabled,
                 lastCollectedAt = summary?.lastSeenAt,
                 eventsLast24h = summary?.eventCountLast24h ?: 0,
-                permissionRequired = collector.id in setOf("usage", "notifications", "activity"),
+                permissionRequired = collector.id in setOf("usage", "notifications", "activity", "location"),
                 permissionGranted = permissionGranted
             )
         }
@@ -87,7 +87,9 @@ internal fun buildCollectors(context: Context): List<Collector> = listOf(
     DeviceCollector(context),
     UsageCollector(context),
     NotificationCollector(),
-    ActivityRecognitionCollector()
+    ActivityRecognitionCollector(),
+    MediaCollector(),
+    LocationCollector()
 )
 
 internal fun cadenceLabel(cadence: CollectorCadence): String = when (cadence) {
@@ -109,6 +111,8 @@ internal fun collectorLabel(id: String): String = when (id) {
     "usage" -> "Usage stats"
     "notifications" -> "Notifications"
     "activity" -> "Activity recognition"
+    "media" -> "Media sessions"
+    "location" -> "Location"
     else -> id
 }
 
@@ -116,6 +120,7 @@ internal fun permissionGranted(context: Context, collectorId: String): Boolean =
     "usage" -> hasUsageAccess(context)
     "notifications" -> hasNotificationListenerAccess(context)
     "activity" -> hasActivityRecognitionPermission(context)
+    "location" -> hasFineLocationPermission(context) && hasBackgroundLocationPermission(context)
     else -> true
 }
 
@@ -124,4 +129,14 @@ internal fun hasNotificationListenerAccess(context: Context): Boolean =
 
 internal fun hasActivityRecognitionPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) ==
+        PackageManager.PERMISSION_GRANTED
+
+internal fun hasFineLocationPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+
+// Checked separately from fine location — Android 11+ requires background location
+// to be requested in a second step after fine location is granted.
+internal fun hasBackgroundLocationPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
         PackageManager.PERMISSION_GRANTED

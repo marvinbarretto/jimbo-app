@@ -278,6 +278,7 @@ private fun permissionRequiredLabel(collectorId: String): String = when (collect
     "usage" -> "Usage access required"
     "notifications" -> "Notification access required"
     "activity" -> "Activity recognition permission required"
+    "location" -> "Location permission required (tap twice: precise, then background)"
     else -> "Permission required"
 }
 
@@ -285,6 +286,7 @@ private fun permissionActionLabel(collectorId: String): String = when (collector
     "usage" -> "Grant usage access"
     "notifications" -> "Grant notification access"
     "activity" -> "Grant permission"
+    "location" -> "Grant location access"
     else -> "Grant access"
 }
 
@@ -344,6 +346,8 @@ private fun collectorName(id: String): String = when (id) {
     "usage" -> "Usage Stats"
     "notifications" -> "Notifications"
     "activity" -> "Activity"
+    "media" -> "Media"
+    "location" -> "Location"
     else -> id
 }
 
