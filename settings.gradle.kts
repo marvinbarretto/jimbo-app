@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Steps"
+rootProject.name = "jimbo-android"
 include(":app")

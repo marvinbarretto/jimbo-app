@@ -15,11 +15,11 @@ val localProps = Properties().apply {
 }
 
 android {
-    namespace = "dev.marvinbarretto.steps"
+    namespace = "dev.marvinbarretto.jimbo"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.marvinbarretto.steps"
+        applicationId = "dev.marvinbarretto.jimbo"
         minSdk = 34
         targetSdk = 35
         versionCode = 1

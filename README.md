@@ -1,4 +1,4 @@
-# Steps
+# jimbo-android
 
 Lightweight Android app that turns the phone into a telemetry source for Jimbo.
 
