@@ -277,12 +277,14 @@ private fun CollectorSettingsCard(
 private fun permissionRequiredLabel(collectorId: String): String = when (collectorId) {
     "usage" -> "Usage access required"
     "notifications" -> "Notification access required"
+    "activity" -> "Activity recognition permission required"
     else -> "Permission required"
 }
 
 private fun permissionActionLabel(collectorId: String): String = when (collectorId) {
     "usage" -> "Grant usage access"
     "notifications" -> "Grant notification access"
+    "activity" -> "Grant permission"
     else -> "Grant access"
 }
 
@@ -341,6 +343,7 @@ private fun collectorName(id: String): String = when (id) {
     "device" -> "Device"
     "usage" -> "Usage Stats"
     "notifications" -> "Notifications"
+    "activity" -> "Activity"
     else -> id
 }
 

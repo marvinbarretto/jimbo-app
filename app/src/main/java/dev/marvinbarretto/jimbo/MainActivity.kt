@@ -1,22 +1,25 @@
 package dev.marvinbarretto.jimbo
 
-import android.os.Bundle
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.core.content.ContextCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
-import dev.marvinbarretto.jimbo.telemetry.TelemetryStore
 import dev.marvinbarretto.jimbo.telemetry.ACTION_NETWORK_STATE_CHANGED
+import dev.marvinbarretto.jimbo.telemetry.TelemetryStore
 import dev.marvinbarretto.jimbo.ui.JimboApp
 import dev.marvinbarretto.jimbo.ui.theme.JimboTheme
 import kotlinx.coroutines.launch
@@ -86,6 +89,12 @@ class MainActivity : ComponentActivity() {
                         requestPermissions.launch(HealthConnectReader.PERMISSIONS)
                     }
                 }
+                // Re-register activity transitions on each app start if permission is
+                // already granted — Play Services doesn't persist registrations across reboots.
+                if (hasActivityRecognitionPermission()) {
+                    ActivityRecognitionManager.register(this@MainActivity)
+                }
+
                 statusViewModel.refreshStatus()
                 settingsViewModel.refresh()
             } catch (e: Exception) {
@@ -145,6 +154,10 @@ class MainActivity : ComponentActivity() {
         connectivityManager?.unregisterNetworkCallback(networkCallback)
         networkCallbackRegistered = false
     }
+
+    fun hasActivityRecognitionPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) ==
+            PackageManager.PERMISSION_GRANTED
 
     private fun collectNetworkState() {
         lifecycleScope.launch {

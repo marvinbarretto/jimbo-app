@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.health.READ_FLOORS_CLIMBED"/>
     <uses-permission android:name="android.permission.health.READ_ELEVATION_GAINED"/>
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
 
     <application
         android:networkSecurityConfig="@xml/network_security_config"
@@ -44,6 +45,10 @@
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".ActivityTransitionReceiver"
+            android:exported="false"/>
 
         <service
             android:name=".NotificationCollectorService"

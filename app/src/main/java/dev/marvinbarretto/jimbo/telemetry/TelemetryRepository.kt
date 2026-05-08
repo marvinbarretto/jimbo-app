@@ -1,7 +1,10 @@
 package dev.marvinbarretto.jimbo.telemetry
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import dev.marvinbarretto.jimbo.data.CollectorRecentSummary
 import dev.marvinbarretto.jimbo.data.DeadLetterEventSummary
 import dev.marvinbarretto.jimbo.data.StepsDatabase
@@ -42,7 +45,7 @@ class TelemetryRepository(private val context: Context) {
                 enabled = enabledStates[collector.id] ?: collector.defaultEnabled,
                 lastCollectedAt = summary?.lastSeenAt,
                 eventsLast24h = summary?.eventCountLast24h ?: 0,
-                permissionRequired = collector.id in setOf("usage", "notifications"),
+                permissionRequired = collector.id in setOf("usage", "notifications", "activity"),
                 permissionGranted = permissionGranted
             )
         }
@@ -83,7 +86,8 @@ internal fun buildCollectors(context: Context): List<Collector> = listOf(
     HealthConnectCollector(context),
     DeviceCollector(context),
     UsageCollector(context),
-    NotificationCollector()
+    NotificationCollector(),
+    ActivityRecognitionCollector()
 )
 
 internal fun cadenceLabel(cadence: CollectorCadence): String = when (cadence) {
@@ -104,14 +108,20 @@ internal fun collectorLabel(id: String): String = when (id) {
     "device" -> "Device state"
     "usage" -> "Usage stats"
     "notifications" -> "Notifications"
+    "activity" -> "Activity recognition"
     else -> id
 }
 
 internal fun permissionGranted(context: Context, collectorId: String): Boolean = when (collectorId) {
     "usage" -> hasUsageAccess(context)
     "notifications" -> hasNotificationListenerAccess(context)
+    "activity" -> hasActivityRecognitionPermission(context)
     else -> true
 }
 
 internal fun hasNotificationListenerAccess(context: Context): Boolean =
     NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+
+internal fun hasActivityRecognitionPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) ==
+        PackageManager.PERMISSION_GRANTED

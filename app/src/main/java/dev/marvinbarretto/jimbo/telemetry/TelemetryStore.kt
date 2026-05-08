@@ -18,7 +18,8 @@ class TelemetryStore(private val context: Context) {
             HealthConnectCollector(context),
             DeviceCollector(context),
             UsageCollector(context),
-            NotificationCollector()
+            NotificationCollector(),
+            ActivityRecognitionCollector()
         )
     )
 
