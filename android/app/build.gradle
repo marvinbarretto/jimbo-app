@@ -1,4 +1,12 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'com.google.devtools.ksp'
+
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { localProps.load(it) }
+}
 
 android {
     namespace = "dev.marvinbarretto.jimbo.cap"
@@ -15,6 +23,19 @@ android {
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+        buildConfigField "String", "JIMBO_API_URL", "\"${localProps.getProperty('jimbo.api.url', '')}\""
+        buildConfigField "String", "JIMBO_API_KEY", "\"${localProps.getProperty('jimbo.api.key', '')}\""
+        buildConfigField "String", "JIMBO_DEVICE_ID", "\"${localProps.getProperty('jimbo.device.id', 'pixel-marvin')}\""
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions {
+        jvmTarget = "21"
     }
     buildTypes {
         release {
@@ -40,6 +61,16 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Jimbo telemetry stack (ported from legacy app/ module).
+    implementation "androidx.core:core-ktx:1.17.0"
+    implementation "androidx.health.connect:connect-client:1.1.0-alpha10"
+    implementation "androidx.work:work-runtime-ktx:2.10.0"
+    implementation "com.google.android.gms:play-services-location:21.3.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0"
+    implementation "androidx.room:room-runtime:2.7.0-alpha12"
+    implementation "androidx.room:room-ktx:2.7.0-alpha12"
+    ksp "androidx.room:room-compiler:2.7.0-alpha12"
 }
 
 apply from: 'capacitor.build.gradle'
