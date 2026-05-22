@@ -5,6 +5,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.getcapacitor.BridgeActivity
+import dev.marvinbarretto.jimbo.cap.plugins.TelemetryPlugin
 import kotlinx.coroutines.launch
 
 class MainActivity : BridgeActivity() {
@@ -20,6 +21,9 @@ class MainActivity : BridgeActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Plugins must be registered before super.onCreate() so they're available
+        // when the WebView loads and JS calls Capacitor.Plugins.<Name>.
+        registerPlugin(TelemetryPlugin::class.java)
         super.onCreate(savedInstanceState)
         // WorkManager handles its own scheduling persistence; UPDATE policy makes this
         // a cheap re-arm on every launch. BootReceiver also calls this after reboot.
