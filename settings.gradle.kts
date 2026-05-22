@@ -23,4 +23,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "jimbo-app"
-include(":app")
+// Capacitor Android project lives under android/ as a separate Gradle build.
+// Run `cd android && ./gradlew assembleDebug` to build the APK.

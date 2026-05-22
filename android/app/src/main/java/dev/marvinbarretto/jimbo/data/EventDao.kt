@@ -66,6 +66,9 @@ interface EventDao {
     @Query("SELECT COUNT(*) FROM events WHERE deadLetter = 1")
     suspend fun deadLetterCount(): Int
 
+    @Query("SELECT MAX(syncedAt) FROM events WHERE syncedAt IS NOT NULL")
+    suspend fun lastSyncedAt(): Long?
+
     @Query(
         """
         SELECT

@@ -21,7 +21,7 @@ const allowNavigation = Array.from(new Set([
 ]));
 
 const config: CapacitorConfig = {
-  appId: 'dev.marvinbarretto.jimbo.cap',
+  appId: 'dev.marvinbarretto.jimbo',
   appName: 'Jimbo',
   webDir: 'public',
   server: {

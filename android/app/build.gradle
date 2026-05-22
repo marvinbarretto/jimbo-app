@@ -9,10 +9,10 @@ if (localPropsFile.exists()) {
 }
 
 android {
-    namespace = "dev.marvinbarretto.jimbo.cap"
+    namespace = "dev.marvinbarretto.jimbo"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "dev.marvinbarretto.jimbo.cap"
+        applicationId "dev.marvinbarretto.jimbo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -1,4 +1,4 @@
-package dev.marvinbarretto.jimbo.cap
+package dev.marvinbarretto.jimbo
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -9,7 +9,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.getcapacitor.BridgeActivity
-import dev.marvinbarretto.jimbo.cap.plugins.TelemetryPlugin
+import dev.marvinbarretto.jimbo.plugins.TelemetryPlugin
 import kotlinx.coroutines.launch
 
 class MainActivity : BridgeActivity() {

@@ -1,4 +1,4 @@
-package dev.marvinbarretto.jimbo.cap
+package dev.marvinbarretto.jimbo
 
 import android.content.Context
 import android.util.Log

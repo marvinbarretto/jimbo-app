@@ -1,11 +1,11 @@
-package dev.marvinbarretto.jimbo.cap.plugins
+package dev.marvinbarretto.jimbo.plugins
 
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import dev.marvinbarretto.jimbo.cap.data.StepsDatabase
+import dev.marvinbarretto.jimbo.data.StepsDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
