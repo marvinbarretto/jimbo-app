@@ -34,6 +34,7 @@ class GymSessionBridge(private val context: Context) {
     private val pushDao = StepsDatabase.getInstance(context).gymSessionPushDao()
 
     suspend fun bridgeRecent(window: TimeWindow): BridgeOutcome {
+        Log.d(TAG, "Bridge start: window ${window.start} → ${window.end}")
         val client = try {
             HealthConnectClient.getOrCreate(context)
         } catch (e: Exception) {
@@ -53,7 +54,11 @@ class GymSessionBridge(private val context: Context) {
             return BridgeOutcome(0, 0)
         }
 
-        if (records.isEmpty()) return BridgeOutcome(0, 0)
+        Log.d(TAG, "Found ${records.size} HC exercise session(s) in window")
+        if (records.isEmpty()) {
+            Log.d(TAG, "Bridge complete: pushed=0 skipped=0 (no records)")
+            return BridgeOutcome(0, 0)
+        }
 
         val alreadyPushed = pushDao.pushedUids(records.map { it.metadata.id }).toSet()
         val pending = records
