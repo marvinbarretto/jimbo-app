@@ -30,41 +30,46 @@ object JimboClient {
     fun postTelemetryEvents(jsonBody: String): Pair<Int, String> =
         postJson("/api/telemetry/events", jsonBody)
 
+    fun postGymSession(jsonBody: String): Pair<Int, String> =
+        postJson("/api/gym/sessions", jsonBody)
+
+    fun postGymCardio(sessionId: String, jsonBody: String): Pair<Int, String> =
+        postJson("/api/gym/sessions/$sessionId/cardio", jsonBody)
+
+    fun patchGymSession(sessionId: String, jsonBody: String): Pair<Int, String> =
+        sendJson("PATCH", "/api/gym/sessions/$sessionId", jsonBody)
+
     /**
      * BuildConfig.JIMBO_API_URL and JIMBO_API_KEY are injected at build time
      * from local.properties via build.gradle.kts — similar to .env vars in JS.
      */
-    private fun postJson(path: String, jsonBody: String): Pair<Int, String> {
+    private fun postJson(path: String, jsonBody: String): Pair<Int, String> =
+        sendJson("POST", path, jsonBody)
+
+    private fun sendJson(method: String, path: String, jsonBody: String): Pair<Int, String> {
         val endpoint = "${BuildConfig.JIMBO_API_URL}$path"
-        android.util.Log.d("JimboSync", "POST $endpoint (${jsonBody.length} bytes)")
+        android.util.Log.d("JimboSync", "$method $endpoint (${jsonBody.length} bytes)")
         val url = URL(endpoint)
 
-        // HttpsURLConnection is Android's built-in HTTP client.
-        // .apply {} is Kotlin's way of configuring an object inline
-        // (like Object.assign() in JS but type-safe).
         val conn = (url.openConnection() as HttpsURLConnection).apply {
-            // Override the default SSL socket factory to trust all certs
             sslSocketFactory = SSLContext.getInstance("TLS").apply {
                 init(null, trustAllManager, SecureRandom())
             }.socketFactory
-            // Skip hostname verification (the cert doesn't match the IP)
             hostnameVerifier = HostnameVerifier { _, _ -> true }
-            requestMethod = "POST"
+            requestMethod = method
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("X-API-Key", BuildConfig.JIMBO_API_KEY)
-            doOutput = true  // tells the connection we're sending a body
+            doOutput = true
             connectTimeout = 15_000
             readTimeout = 30_000
         }
 
-        // Write the JSON body to the request (like fetch body in JS)
         OutputStreamWriter(conn.outputStream).use { it.write(jsonBody) }
 
-        // Read the response — errorStream is used for non-2xx status codes
         val code = conn.responseCode
         val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
             .bufferedReader().readText()
-        android.util.Log.d("JimboSync", "POST response: $code — $body")
+        android.util.Log.d("JimboSync", "$method response: $code — $body")
         return Pair(code, body)
     }
 }

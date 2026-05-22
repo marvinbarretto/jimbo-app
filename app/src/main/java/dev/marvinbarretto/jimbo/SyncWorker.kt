@@ -7,6 +7,7 @@ import android.os.BatteryManager
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import dev.marvinbarretto.jimbo.telemetry.GymSessionBridge
 import dev.marvinbarretto.jimbo.telemetry.SyncConstraintsRepository
 import dev.marvinbarretto.jimbo.telemetry.TelemetryStore
 import dev.marvinbarretto.jimbo.telemetry.TelemetryDrainOutcome
@@ -17,6 +18,10 @@ import java.time.Instant
 
 private const val TAG = "JimboSync"
 private const val SYNC_WINDOW_HOURS = 2L
+// Bridge looks further back than the collection window because HC may surface a
+// completed exercise session hours after it ended, and the local dedup table
+// makes it safe to re-scan the same range repeatedly.
+private const val GYM_BRIDGE_WINDOW_HOURS = 24L
 
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -36,7 +41,25 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             )
         )
 
-        return when (TelemetrySyncer(applicationContext).drainPending()) {
+        val drainOutcome = TelemetrySyncer(applicationContext).drainPending()
+
+        // Bridge HC exercise sessions → gym sessions only after telemetry sync
+        // succeeded — if the network is flaky, no point trying gym POSTs either.
+        // Failures here are logged and swallowed; they should not fail the worker
+        // and trigger a retry of the telemetry drain.
+        if (drainOutcome is TelemetryDrainOutcome.Success) {
+            try {
+                val bridgeWindow = TimeWindow(
+                    start = now.minus(Duration.ofHours(GYM_BRIDGE_WINDOW_HOURS)),
+                    end = now
+                )
+                GymSessionBridge(applicationContext).bridgeRecent(bridgeWindow)
+            } catch (e: Exception) {
+                Log.e(TAG, "Gym session bridge failed", e)
+            }
+        }
+
+        return when (drainOutcome) {
             is TelemetryDrainOutcome.Success -> Result.success()
             is TelemetryDrainOutcome.RetryableFailure -> Result.retry()
             is TelemetryDrainOutcome.PermanentFailure -> Result.failure()

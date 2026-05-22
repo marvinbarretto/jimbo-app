@@ -9,9 +9,10 @@ import androidx.room.RoomDatabase
     entities = [
         EventEntity::class,
         CollectorSettingEntity::class,
-        SyncConstraintEntity::class
+        SyncConstraintEntity::class,
+        GymSessionPushEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class StepsDatabase : RoomDatabase() {
@@ -19,6 +20,7 @@ abstract class StepsDatabase : RoomDatabase() {
     abstract fun eventDao(): EventDao
     abstract fun collectorSettingDao(): CollectorSettingDao
     abstract fun syncConstraintDao(): SyncConstraintDao
+    abstract fun gymSessionPushDao(): GymSessionPushDao
 
     companion object {
         @Volatile
