@@ -25,6 +25,12 @@ class MainActivity : BridgeActivity() {
         // when the WebView loads and JS calls Capacitor.Plugins.<Name>.
         registerPlugin(TelemetryPlugin::class.java)
         super.onCreate(savedInstanceState)
+
+        BridgeRegistry.getInstance(this).apply {
+            registerCapability("telemetry", 1)
+            attachToBridge(bridge)
+        }
+
         // WorkManager handles its own scheduling persistence; UPDATE policy makes this
         // a cheap re-arm on every launch. BootReceiver also calls this after reboot.
         SyncScheduler.schedulePeriodic(this)
