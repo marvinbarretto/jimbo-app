@@ -27,6 +27,7 @@ android {
 
         buildConfigField("String", "JIMBO_API_URL", "\"${localProps.getProperty("jimbo.api.url", "")}\"")
         buildConfigField("String", "JIMBO_API_KEY", "\"${localProps.getProperty("jimbo.api.key", "")}\"")
+        buildConfigField("String", "JIMBO_DEVICE_ID", "\"${localProps.getProperty("jimbo.device.id", "pixel-marvin")}\"")
     }
 
     buildFeatures {

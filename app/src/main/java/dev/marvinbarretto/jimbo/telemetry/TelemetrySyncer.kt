@@ -2,6 +2,7 @@ package dev.marvinbarretto.jimbo.telemetry
 
 import android.content.Context
 import android.util.Log
+import dev.marvinbarretto.jimbo.BuildConfig
 import dev.marvinbarretto.jimbo.JimboClient
 import dev.marvinbarretto.jimbo.data.EventEntity
 import dev.marvinbarretto.jimbo.data.StepsDatabase
@@ -11,7 +12,6 @@ import org.json.JSONObject
 private const val TAG = "JimboSync"
 private const val MAX_ATTEMPTS = 10
 private const val BATCH_SIZE = 500
-private const val DEVICE_ID = "pixel-marvin"
 
 sealed interface TelemetryDrainOutcome {
     data class Success(val syncedCount: Int) : TelemetryDrainOutcome
@@ -74,7 +74,7 @@ class TelemetrySyncer(context: Context) {
             events.forEach { put(it.toRequestJson()) }
         }
         return JSONObject().apply {
-            put("device_id", DEVICE_ID)
+            put("device_id", BuildConfig.JIMBO_DEVICE_ID)
             put("events", jsonEvents)
         }
     }
