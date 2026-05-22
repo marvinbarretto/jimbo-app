@@ -1,0 +1,19 @@
+{
+  "name": "jimbo-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor wrapper around the gym PWA + native telemetry plugins",
+  "scripts": {
+    "cap:sync": "cap sync android",
+    "cap:open": "cap open android",
+    "cap:run": "cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.3.4",
+    "@capacitor/cli": "8.3.4",
+    "@capacitor/core": "8.3.4"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}
