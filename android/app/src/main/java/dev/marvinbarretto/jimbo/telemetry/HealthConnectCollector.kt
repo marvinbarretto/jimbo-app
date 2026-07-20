@@ -22,6 +22,9 @@ import java.time.Duration
 private const val TAG = "HealthCollector"
 private const val AGGREGATE_SOURCE = "health_connect_aggregate"
 
+private val HR_PERMISSION = HealthPermission.getReadPermission(HeartRateRecord::class)
+private val SLEEP_PERMISSION = HealthPermission.getReadPermission(SleepSessionRecord::class)
+
 class HealthConnectCollector(
     private val context: Context
 ) : Collector {
@@ -39,12 +42,22 @@ class HealthConnectCollector(
         // missing steps while every other collector flowed) undiagnosable.
         // Missing permissions and read errors now ship as events themselves,
         // so the DB can always answer "why is HC quiet here?".
-        reportMissingPermissions(client, window, events)
+        val granted = reportMissingPermissions(client, window, events)
+
         collectAggregateMetrics(client, filter, window, events)
         collectFloors(client, filter, window, events)
-        collectHeartRate(client, filter, window, events)
+        // Deliberately ungranted reads are skipped, not attempted: the
+        // hc_diagnostic event above already documents the state, and trying
+        // anyway would emit an hc_error per sync forever (~48/day of noise).
+        // `granted == null` means the probe itself failed — attempt the read
+        // so a broken probe can't silently disable collection.
+        if (granted == null || HR_PERMISSION in granted) {
+            collectHeartRate(client, filter, window, events)
+        }
         collectExerciseSessions(client, filter, window, events)
-        collectSleepSessions(client, filter, window, events)
+        if (granted == null || SLEEP_PERMISSION in granted) {
+            collectSleepSessions(client, filter, window, events)
+        }
 
         Log.d(TAG, "Collected ${events.size} Health Connect events")
         return events
@@ -54,8 +67,8 @@ class HealthConnectCollector(
         client: HealthConnectClient,
         window: TimeWindow,
         events: MutableList<RawEvent>
-    ) {
-        try {
+    ): Set<String>? {
+        return try {
             val granted = client.permissionController.getGrantedPermissions()
             val expected = HealthConnectReader.PERMISSIONS +
                 HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
@@ -68,8 +81,10 @@ class HealthConnectCollector(
                     payload = mapOf("missing_permissions" to missing)
                 )
             }
+            granted
         } catch (e: Exception) {
             events += errorEvent("permission_probe", e, window)
+            null
         }
     }
 
