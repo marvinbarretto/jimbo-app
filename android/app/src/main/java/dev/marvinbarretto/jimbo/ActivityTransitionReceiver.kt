@@ -50,12 +50,16 @@ class ActivityTransitionReceiver : BroadcastReceiver() {
         // interval, which is significantly more battery-efficient. The trade-off
         // is no confidence score; enter/exit is binary.
         val events = result.transitionEvents.map { event ->
+            val typeName = activityTypeName(event.activityType)
+            if (event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
+                ActivityStateStore.onEnter(context, typeName)
+            }
             RawEvent(
                 collector = COLLECTOR_ID,
                 type = "activity.transition",
                 ts = now,
                 payload = mapOf(
-                    "activity_type" to activityTypeName(event.activityType),
+                    "activity_type" to typeName,
                     "transition" to if (event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) "enter" else "exit"
                 )
             )
