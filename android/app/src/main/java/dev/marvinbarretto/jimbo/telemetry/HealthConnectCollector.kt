@@ -10,9 +10,11 @@ import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import dev.marvinbarretto.jimbo.HealthConnectReader
 import dev.marvinbarretto.jimbo.exerciseTypeName
 import dev.marvinbarretto.jimbo.stageTypeName
 import java.time.Duration
@@ -33,15 +35,54 @@ class HealthConnectCollector(
         val filter = TimeRangeFilter.between(window.start, window.end)
         val events = mutableListOf<RawEvent>()
 
+        // Failures used to die in logcat, making server-side gaps (hours of
+        // missing steps while every other collector flowed) undiagnosable.
+        // Missing permissions and read errors now ship as events themselves,
+        // so the DB can always answer "why is HC quiet here?".
+        reportMissingPermissions(client, window, events)
         collectAggregateMetrics(client, filter, window, events)
-        collectFloors(client, filter, events)
+        collectFloors(client, filter, window, events)
         collectHeartRate(client, filter, window, events)
-        collectExerciseSessions(client, filter, events)
-        collectSleepSessions(client, filter, events)
+        collectExerciseSessions(client, filter, window, events)
+        collectSleepSessions(client, filter, window, events)
 
         Log.d(TAG, "Collected ${events.size} Health Connect events")
         return events
     }
+
+    private suspend fun reportMissingPermissions(
+        client: HealthConnectClient,
+        window: TimeWindow,
+        events: MutableList<RawEvent>
+    ) {
+        try {
+            val granted = client.permissionController.getGrantedPermissions()
+            val expected = HealthConnectReader.PERMISSIONS +
+                HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
+            val missing = (expected - granted).sorted()
+            if (missing.isNotEmpty()) {
+                events += RawEvent(
+                    collector = id,
+                    type = "hc_diagnostic",
+                    ts = window.end,
+                    payload = mapOf("missing_permissions" to missing)
+                )
+            }
+        } catch (e: Exception) {
+            events += errorEvent("permission_probe", e, window)
+        }
+    }
+
+    private fun errorEvent(phase: String, e: Exception, window: TimeWindow): RawEvent = RawEvent(
+        collector = id,
+        type = "hc_error",
+        ts = window.end,
+        payload = mapOf(
+            "phase" to phase,
+            "exception" to (e::class.simpleName ?: "Exception"),
+            "message" to e.message?.take(200)
+        )
+    )
 
     private suspend fun collectAggregateMetrics(
         client: HealthConnectClient,
@@ -76,12 +117,14 @@ class HealthConnectCollector(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Aggregate metrics failed", e)
+            events += errorEvent("aggregate", e, window)
         }
     }
 
     private suspend fun collectFloors(
         client: HealthConnectClient,
         filter: TimeRangeFilter,
+        window: TimeWindow,
         events: MutableList<RawEvent>
     ) {
         try {
@@ -100,6 +143,7 @@ class HealthConnectCollector(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Floors collection failed", e)
+            events += errorEvent("floors", e, window)
         }
     }
 
@@ -139,12 +183,14 @@ class HealthConnectCollector(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Heart rate collection failed", e)
+            events += errorEvent("heart_rate", e, window)
         }
     }
 
     private suspend fun collectExerciseSessions(
         client: HealthConnectClient,
         filter: TimeRangeFilter,
+        window: TimeWindow,
         events: MutableList<RawEvent>
     ) {
         try {
@@ -165,12 +211,14 @@ class HealthConnectCollector(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exercise session collection failed", e)
+            events += errorEvent("exercise_sessions", e, window)
         }
     }
 
     private suspend fun collectSleepSessions(
         client: HealthConnectClient,
         filter: TimeRangeFilter,
+        window: TimeWindow,
         events: MutableList<RawEvent>
     ) {
         try {
@@ -199,6 +247,7 @@ class HealthConnectCollector(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Sleep session collection failed", e)
+            events += errorEvent("sleep_sessions", e, window)
         }
     }
 

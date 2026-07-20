@@ -72,6 +72,11 @@ object HealthConnectReader {
         HealthPermission.getReadPermission(ElevationGainedRecord::class),
         HealthPermission.getReadPermission(SleepSessionRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
+        // Declared in the manifest since day one but never REQUESTED, so it
+        // was never granted — background syncs threw SecurityException and
+        // HC capture silently only worked while the app was recently
+        // foregrounded (the cause of multi-hour daytime gaps in steps).
+        HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND,
     )
 
     suspend fun readToday(context: Context): TodayData {
