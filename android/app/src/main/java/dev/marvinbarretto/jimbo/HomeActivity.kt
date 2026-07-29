@@ -26,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -113,7 +114,10 @@ private fun HomeScreen(onOpenGym: () -> Unit) {
     val context = LocalContext.current
     var healthData by remember { mutableStateOf<TodayData?>(null) }
     val activityState = remember { ActivityStateStore.getCurrent(context) }
-    val now = remember { LocalTime.now() }
+    // LocalDateTime, not LocalTime: the header formats "EEE d MMM", and a
+    // time-only value carries no day or month, so formatting it threw
+    // UnsupportedTemporalTypeException on every launch. `.hour` still works.
+    val now = remember { LocalDateTime.now() }
 
     LaunchedEffect(Unit) {
         try {

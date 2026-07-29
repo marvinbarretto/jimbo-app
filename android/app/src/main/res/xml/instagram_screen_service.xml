@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Subscription declaration for InstagramScreenService.
+
+    The OS reads this at bind time and enforces it — this is the capability
+    boundary, not a runtime check we could get wrong. In particular
+    `packageNames` means the system never delivers events from any other app:
+    the service is structurally blind to everything but Instagram.
+
+    Milestone notes (spec: LocalShout docs/plans/2026-07-29-jimbo-app-screen-capture-spec.md):
+      - M1: events only. No content retrieval, no screenshots.
+      - M2a (this): canRetrieveWindowContent, so we can see what IG's tree holds.
+      - M4 adds android:canTakeScreenshots="true" for stories/posters.
+    Each of those widens what the Accessibility toggle grants, so they land with
+    the milestone that actually uses them rather than up front.
+
+    notificationTimeout is 100, not the 800 the spec suggested. Measured on device
+    2026-07-29: with 800 declared, content-change events still arrived ~68ms apart
+    (290 of them in 19.7s), so the OS was not coalescing to anything like the
+    declared period. Leaving 800 in place implied a guarantee we do not get, and
+    sat awkwardly above the 700ms settle debounce that is doing the actual work.
+    Settling is now the debounce's job alone; this value just keeps delivery cheap.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/instagram_screen_service_description"
+    android:notificationTimeout="100"
+    android:packageNames="com.instagram.android"
+    android:summary="@string/instagram_screen_service_summary" />

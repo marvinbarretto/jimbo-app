@@ -27,6 +27,11 @@ android {
         buildConfigField "String", "JIMBO_API_URL", "\"${localProps.getProperty('jimbo.api.url', '')}\""
         buildConfigField "String", "JIMBO_API_KEY", "\"${localProps.getProperty('jimbo.api.key', '')}\""
         buildConfigField "String", "JIMBO_DEVICE_ID", "\"${localProps.getProperty('jimbo.device.id', 'pixel-marvin')}\""
+        // LocalShout screen-capture ingest. Blank by default: ScreenSyncWorker
+        // no-ops when unset, so a build without these still runs — it just never
+        // sends. Set localshout.ingest.url / localshout.screen.key to enable.
+        buildConfigField "String", "LOCALSHOUT_INGEST_URL", "\"${localProps.getProperty('localshout.ingest.url', '')}\""
+        buildConfigField "String", "LOCALSHOUT_SCREEN_KEY", "\"${localProps.getProperty('localshout.screen.key', '')}\""
     }
     buildFeatures {
         compose true
@@ -45,6 +50,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+}
+
+// Room writes the resolved schema to app/schemas/<db>/<version>.json at compile
+// time. That file is the ground truth for what a migration's SQL must produce —
+// hand-written CREATE TABLE that differs by so much as a nullability flag makes
+// Room throw on open. Diff the exported JSON when adding a migration.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 repositories {

@@ -4,4 +4,7 @@
     <string name="title_activity_main">Jimbo</string>
     <string name="package_name">dev.marvinbarretto.jimbo</string>
     <string name="custom_url_scheme">dev.marvinbarretto.jimbo</string>
+    <string name="instagram_screen_service_label">Instagram screen capture</string>
+    <string name="instagram_screen_service_summary">Reads event listings off Instagram as you browse it</string>
+    <string name="instagram_screen_service_description">Watches Instagram — and only Instagram — while you use it normally, so gig and event listings you scroll past can be picked up automatically. It never scrolls or taps for you, and no other app is visible to it.</string>
 </resources>
