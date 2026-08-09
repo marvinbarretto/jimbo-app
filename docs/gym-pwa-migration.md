@@ -2,6 +2,13 @@
 
 ← [Vision](vision.md)
 
+> **Partly superseded, Aug 2026.** The destination changed: the WebView moves to
+> a phone-first Angular `/m` shell in the dashboard repo, not to native screens.
+> Phases 1 and 4 stand. **Phase 2** (native gym session) and **Phase 3**
+> (briefing as native view) are superseded — both live in `/m` instead.
+> **Phase 5** is brought forward and is now the point of the arc.
+> See `dashboard/docs/architecture/mobile-shell.md`.
+
 ## Current state
 
 The entire native app experience is the gym Next.js PWA loaded in a Capacitor WebView. The native shell collects telemetry in the background but contributes nothing to the UI.
@@ -37,25 +44,17 @@ Nothing in the gym PWA changes. The Capacitor `server.url` still points there; w
 
 ---
 
-### Phase 2 — Native gym session screen
-Replace the WebView flow for starting/logging a gym session with a native screen. This is the highest-value native replacement because:
-- Health Connect reads are faster without the bridge roundtrip
-- Haptics on set completion feel right
-- Session data can be written directly without a WebView network call
+### Phase 2 — Native gym session screen — **superseded**
+The active-session flow lives in the `/m` shell's **Train** tab, not a native screen. The reasons for going native still hold in part — haptics matter, and gym arrival should auto-detect — but they're satisfied through the bridge (`HapticsPlugin`, `ActivityContextPlugin`) rather than by reimplementing the set/rep UI in Compose. The deciding factor: the tracker primitives already exist in Angular and generalise across nutrition, gym and project-work; a third implementation earns nothing.
 
-The gym PWA keeps the session *history/review* view. Native owns the *active session* flow.
-
-**Migration trigger:** when `ActivityContextPlugin` is built — the native session screen uses it to auto-detect gym arrival.
+`/api/gym/sessions/active` and `POST /api/gym/sessions/{id}/sets` already exist, so there's no backend work gating this.
 
 ---
 
-### Phase 3 — Briefing as native view
-The daily briefing is currently in the Angular dashboard (separate URL). Surfacing it natively means: fetch the briefing payload from jimbo-api, render it in a native view. No Angular, no WebView.
+### Phase 3 — Briefing as native view — **superseded**
+Briefing lives in the `/m` shell's **Today** tab. It's still the primary morning touch-point and still a notification-action destination — it deep-links into `/m` rather than rendering natively. Instant load comes from the service worker, and `HealthSnapshotPlugin` data reaches it over the bridge.
 
-This is worth doing because:
-- Briefing is the primary morning touch-point — should load instantly
-- It can consume `HealthSnapshotPlugin` data directly without a bridge call
-- It becomes a notification action destination ("tap to see today's briefing")
+One implementation, reachable from the native home, a notification tap, or a browser.
 
 ---
 
@@ -66,26 +65,28 @@ The games (wheel-of-life, hedonic, etc.) are simple enough to port to native Kot
 
 ---
 
-### Phase 5 — Gym PWA becomes browser-only
-At this point, the gym PWA still exists but isn't loaded in the WebView. The WebView may be used for the dashboard or removed entirely. The gym app becomes what it originally was: a browser-accessible workout tracker.
+### Phase 5 — Gym PWA becomes browser-only — **now the point of the arc**
+`server.url` points at the dashboard's `/m` shell. The gym PWA still exists but isn't loaded in the WebView; it keeps coach chat, voice logging and session history as a browser surface.
 
-The Capacitor `server.url` config either points to the dashboard or is removed.
+**Blocker before flipping:** write parity. The `/m` Train tab and gym write the same tables, and `gym_session_sets` stores an aggregated `sets` count — confirm a mobile-logged session round-trips identically before pulling gym out.
 
 ---
 
 ## What the gym PWA should NOT do going forward
 
-As native features get built, avoid adding new functionality to the gym PWA that:
-- Requires native context (location, activity, health snapshot) — these belong to native screens
+Avoid adding new functionality to the gym PWA that:
+- Requires native context (location, activity, health snapshot) — these reach `/m` over the bridge
 - Is better served by haptics or widgets
 - Is a "glance" feature (current activity, today's steps, sync status)
+- **Is day-ledger logging of any kind** — that's `/m`'s job now, on the shared tracker primitives
 
-The gym PWA is best suited to: complex data entry, session history, settings, anything that benefits from a larger screen or keyboard.
+The gym PWA is best suited to: coach chat, voice logging, session history and review — anything that benefits from a larger screen or keyboard.
 
 ---
 
 ## Risks
 
 - **Double-maintenance during transition** — some features will live in both places temporarily. Accept this; it's cheaper than a big-bang rewrite.
-- **WebView caching** — the gym PWA at `gym-kohl-theta.vercel.app` deploys independently. Pin to a specific deployment URL during native rollouts to avoid chasing a moving target. See `capacitor.config.ts` comment in [migration handoff](capacitor-migration-handoff.md).
+- **WebView caching** — while `server.url` points at Vercel, pin a specific deployment during native rollouts to avoid chasing a moving target (see `capacitor.config.ts`). Once it points at the dashboard this changes shape: assets are hash-named and immutable, but an Angular service worker now sits in front of them, so a bad deploy is sticky until the SW updates. Keep a way to force-refresh from the native side.
+- **The phone now rides dashboard deploys** — `npm run release`, `git push --follow-tags`, rsync to the VPS. A broken dashboard deploy is a broken phone app.
 - **NotificationListenerService re-grant** — already flagged in migration handoff; plan a one-time onboarding screen.

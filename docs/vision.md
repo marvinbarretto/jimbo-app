@@ -2,7 +2,9 @@
 
 > **North star:** the native Android app is a *context layer* — it knows what you're actually doing and feeds that ground truth into the Jimbo suite so reflection tools, briefings, and games can be honest rather than relying purely on self-report.
 
-The app started as a telemetry shell wrapping the gym PWA in a Capacitor WebView. The vision ahead is for it to become the primary mobile surface for the whole Jimbo system — with the gym PWA eventually demoted to a browser fallback and desktop experience.
+The app started as a telemetry shell wrapping the gym PWA in a Capacitor WebView. The vision ahead is for it to become the primary mobile surface for the whole Jimbo system — with the gym PWA demoted to a browser-only coach/history surface.
+
+> **Updated Aug 2026.** The WebView's content is moving from the gym PWA to a phone-first Angular shell (`/m`) in the dashboard repo. Native keeps the context layer and the launcher; the web surface it hosts is now the dashboard, not gym. Full rationale and sequencing: `dashboard/docs/architecture/mobile-shell.md`. This reverses the "not building a replacement for the dashboard" line below and supersedes parts of the linked roadmaps — each carries its own note.
 
 ---
 
@@ -32,7 +34,7 @@ When someone picks up their phone and opens this app, they're in one of these mo
 | **Mid-day check-in** | Long still period / high screen time | Steps, screen time, nudge |
 | **Evening reflection** | 9pm+, low activity | Journal, wheel-of-life, games |
 
-The home screen should adapt to these contexts rather than defaulting to the gym PWA every time.
+The home screen should adapt to these contexts rather than defaulting to a single web destination every time. It is the *router* — it decides what's relevant now and deep-links into the matching `/m` tab; the web shell renders the content.
 
 ---
 
@@ -42,12 +44,13 @@ The home screen should adapt to these contexts rather than defaulting to the gym
 - [Native UI Roadmap](native-ui-roadmap.md) — screen-by-screen native experience and home screen design
 - [Behavioral Digest API](behavioral-digest-api.md) — aggregation layer on jimbo-api that turns raw telemetry into actionable signals
 - [Gym PWA Migration Arc](gym-pwa-migration.md) — how and when to demote the WebView from primary to fallback
+- [Mobile Shell](../../jimbo/dashboard/docs/architecture/mobile-shell.md) — the `/m` Angular shell the WebView now hosts (lives in the dashboard repo)
 
 ---
 
 ## What we are not building
 
-- A replacement for the dashboard (Angular) — that stays as the deep review/management surface
+- **A native reimplementation of CRUD.** Logging UI — nutrition, gym sets, capture forms, ledgers — lives in the dashboard's `/m` shell, which owns the tracker primitives. Native builds what only native can: passive collection, context, haptics, widgets, notifications. (Supersedes the earlier "the dashboard is not the mobile surface" position — the dashboard's *desktop* routes stay the deep review/management surface, but `/m` is now the phone.)
 - A replacement for jimbo-games (SvelteKit) — those migrate to native eventually but the web versions stay
 - A standalone health app — this is Jimbo context enrichment, not a fitness tracker
 

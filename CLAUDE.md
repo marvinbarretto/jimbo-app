@@ -2,7 +2,9 @@
 
 ## Project
 
-Android telemetry shell for Jimbo. Native Kotlin code collects events from Health Connect, device broadcasts, activity recognition, location, usage stats, notifications, and media sessions, then syncs them to the Jimbo API. The UI is the **gym Next.js PWA**, loaded into a Capacitor WebView — native exposes typed surfaces to the PWA via Capacitor plugins.
+Android telemetry shell for Jimbo. Native Kotlin code collects events from Health Connect, device broadcasts, activity recognition, location, usage stats, notifications, and media sessions, then syncs them to the Jimbo API. The UI is a web app loaded into a Capacitor WebView — native exposes typed surfaces to it via Capacitor plugins.
+
+**The WebView's content is mid-move.** It currently points at the gym Next.js PWA; the destination is the dashboard's phone-first Angular `/m` shell (`jimbo/dashboard/docs/architecture/mobile-shell.md`, decided Aug 2026). The bridge is URL-agnostic so plugins are unaffected — but the unbuilt `AuthPlugin` gates the cutover. Docs under `docs/` carry supersession notes where the older plan assumed native screens.
 
 `docs/capacitor-migration-handoff.md` has the long-form context on how this project got here.
 
@@ -14,7 +16,7 @@ Android telemetry shell for Jimbo. Native Kotlin code collects events from Healt
 - `capacitor.config.ts` — points the WebView at the gym PWA URL.
 - `docs/` — handoff briefs.
 
-The legacy Kotlin/Compose `app/` module has been deleted — the gym PWA absorbs everything that used to live in `StatusScreen` / `SettingsScreen`, surfaced through plugins.
+The legacy Kotlin/Compose `app/` module has been deleted — the hosted web UI absorbs everything that used to live in `StatusScreen` / `SettingsScreen`, surfaced through plugins. (Post-cutover that lands in the dashboard `/m` shell, not gym.)
 
 ## Build & run
 

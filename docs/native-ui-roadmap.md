@@ -4,6 +4,8 @@
 
 The goal is to move from "WebView that loads the gym PWA" to "native app with WebView as one section". The wedge is a native home screen that appears before and instead of the WebView landing.
 
+> **Updated Aug 2026.** The WebView's content becomes the dashboard's `/m` shell (Today / Log / Train tabs). That doesn't change this doc's premise — native home is still the wedge and still the router — but it does retire two of the native screens below: the gym session screen and the native briefing view. Native builds what only native can. See `dashboard/docs/architecture/mobile-shell.md`.
+
 ---
 
 ## Current state
@@ -20,12 +22,16 @@ The gym PWA handles: workout logging, session history, cardio tracking, settings
 
 ```
 App launch → Native home screen (adaptive context card + quick actions)
-                ├── Tap "Gym" → WebView / native gym session screen
+                ├── Tap "Gym" → WebView → /m/train
+                ├── Tap "Food" → WebView → /m/log
+                ├── Tap "Briefing" → WebView → /m/today
                 ├── Tap "Focus" → Native focus timer
                 ├── Tap "Capture" → Native bottom sheet
-                ├── Tap "Briefing" → WebView (dashboard briefing page)
                 └── Tap "Reflect" → Native reflection launcher
 ```
+
+Every web destination is a deep link into one `/m` tab. The home screen picks
+which one based on context; the shell renders it.
 
 ---
 
@@ -138,20 +144,21 @@ Shows collectors active, last sync time, pending/dead-letter counts. Replaces th
 
 ## Navigation model
 
-Keep it flat and gestural — no nested tab bars. The gym PWA already has its own bottom nav for within-gym navigation; don't fight it. 
+Keep it flat and gestural — no nested tab bars *in native*. The `/m` shell has its own bottom tab bar for within-web navigation; don't fight it or mirror it.
 
 ```
 Native home screen
-├── → Native gym session (replaces WebView for this flow eventually)
-├── → Focus timer
-├── → Quick capture (bottom sheet, overlays current screen)
+├── → WebView /m/today   (briefing, day checks)
+├── → WebView /m/log     (nutrition ledger)
+├── → WebView /m/train   (gym session + ledger)
+├── → Focus timer (native)
+├── → Quick capture (native bottom sheet, overlays current screen)
 ├── → Reflection launcher → Journal / Games (WebView or native)
-├── → Settings (native)
-│     └── → Developer / Telemetry status
-└── → "Open dashboard" (WebView → dashboard URL)
+└── → Settings (native)
+      └── → Developer / Telemetry status
 ```
 
-The WebView stays for anything complex (tasks, briefing, journal CRUD, dashboard review) until those features get native treatments.
+The WebView is now the default destination for anything with a form or a list. Native owns the launcher, the focus timer, quick capture, and the reflection context injection — the things that need to be instant, backgrounded, or physical.
 
 ---
 
@@ -159,9 +166,10 @@ The WebView stays for anything complex (tasks, briefing, journal CRUD, dashboard
 
 | Phase | What changes |
 |-------|-------------|
-| 1 | Native home screen sits in front of WebView |
-| 2 | Quick capture sheet (native, always accessible) |
-| 3 | Focus timer (native, calls jimbo-api) |
-| 4 | Gym session screen (native, replaces WebView gym flow) |
+| 1 | Native home screen sits in front of WebView ✅ (`4db8b54`) |
+| 2 | `AuthPlugin` + `server.url` → dashboard `/m`; home tiles deep-link into tabs |
+| 3 | Quick capture sheet (native, always accessible) |
+| 4 | Focus timer (native, calls jimbo-api) |
 | 5 | Reflection launcher with behavioral context injection |
-| 6 | Briefing as a native rendered view |
+| ~~—~~ | ~~Gym session screen (native)~~ — superseded by `/m/train` |
+| ~~—~~ | ~~Briefing as a native rendered view~~ — superseded by `/m/today` |

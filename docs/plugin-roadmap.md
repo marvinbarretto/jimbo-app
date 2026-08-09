@@ -2,14 +2,44 @@
 
 ← [Vision](vision.md)
 
-Capacitor plugins expose native data to the gym PWA via `window.__JIMBO_BRIDGE__`. Each plugin follows the pattern in `plugins/<name>/definitions.ts`.
+Capacitor plugins expose native data to the hosted web surface via `window.__JIMBO_BRIDGE__`. Each plugin follows the pattern in `plugins/<name>/definitions.ts`.
+
+> The consumer is moving from the gym PWA to the dashboard's `/m` shell (see [Mobile Shell](../../jimbo/dashboard/docs/architecture/mobile-shell.md)). The bridge is URL-agnostic — it injects into whatever page loads — so no plugin below changes shape.
 
 The current plugin:
 - `TelemetryPlugin` (v1) — read-only sync status (lastSyncAt, pendingCount, deadLetterCount)
 
 ---
 
-## Priority 1 — Real-time context for the PWA
+## Priority 0 — `AuthPlugin` (blocks the `/m` cutover)
+
+`/api/*` and `/stream/*` are cookie-OR-`X-API-Key`, app-gated. Rather than
+depending on a WebView session cookie surviving indefinitely, native hands the
+web shell the credentials it already holds in BuildConfig.
+
+```ts
+interface AuthPlugin {
+  getApiCredentials(): Promise<{
+    apiKey: string;
+    apiUrl: string;    // BuildConfig jimbo.api.url — the shell shouldn't hardcode it
+    deviceId: string;  // useful for attributing writes to the phone
+  }>;
+}
+```
+
+**Why this over the cookie:** no expiry to handle, no login screen in the
+WebView, and it reuses the plugin pattern already in place. The key is in the
+APK either way — this doesn't widen the blast radius meaningfully.
+
+**Rules for the consuming shell:** attach the key only to same-origin `/api`
+and `/stream` requests, never log it, and fall back to cookie auth when
+`bridge.has('auth')` is false so the same build still works in a desktop
+browser. Angular side: an `HttpInterceptor` that resolves credentials once at
+bootstrap.
+
+---
+
+## Priority 1 — Real-time context for the web shell
 
 ### `ActivityContextPlugin`
 Expose the current activity recognition state so the PWA can adapt its UI.

@@ -1,6 +1,8 @@
 # jimbo-app
 
-Android telemetry capture for Jimbo, packaged as a Capacitor shell that hosts the gym Next.js PWA. Native Kotlin code runs the collectors and background sync; the PWA provides the UI and calls into native via Capacitor plugins.
+Android telemetry capture for Jimbo, packaged as a Capacitor shell that hosts a web UI. Native Kotlin code runs the collectors and background sync; the web app provides the UI and calls into native via Capacitor plugins.
+
+The WebView currently loads the gym Next.js PWA and is moving to the dashboard's phone-first Angular `/m` shell — see [Gym PWA Migration Arc](docs/gym-pwa-migration.md).
 
 ## What it does
 
@@ -71,7 +73,7 @@ Plugin capabilities are versioned — when a method is added, the version is bum
 
 ## Tech
 
-Capacitor Android shell hosting the gym Next.js PWA. Native modules use Kotlin + WorkManager + Room + Health Connect + Play Services (Activity Recognition + Fused Location). No HTTP library — raw `HttpsURLConnection` because the API VPS is self-signed. See `android/app/build.gradle` and `CLAUDE.md` for the layout and entry points.
+Capacitor Android shell hosting a web UI (gym Next.js PWA today, dashboard Angular `/m` shell next). Native modules use Kotlin + WorkManager + Room + Health Connect + Play Services (Activity Recognition + Fused Location). No HTTP library — raw `HttpsURLConnection` because the API VPS is self-signed. See `android/app/build.gradle` and `CLAUDE.md` for the layout and entry points.
 
 ## Further development
 
