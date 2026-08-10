@@ -4,7 +4,7 @@
 
 Android telemetry shell for Jimbo. Native Kotlin code collects events from Health Connect, device broadcasts, activity recognition, location, usage stats, notifications, and media sessions, then syncs them to the Jimbo API. The UI is a web app loaded into a Capacitor WebView — native exposes typed surfaces to it via Capacitor plugins.
 
-**The WebView's content is mid-move.** It currently points at the gym Next.js PWA; the destination is the dashboard's phone-first Angular `/m` shell (`jimbo/dashboard/docs/architecture/mobile-shell.md`, decided Aug 2026). The bridge is URL-agnostic so plugins are unaffected — but the unbuilt `AuthPlugin` gates the cutover. Docs under `docs/` carry supersession notes where the older plan assumed native screens.
+**The WebView loads the dashboard's phone-first Angular `/m` shell** (`jimbo/dashboard/docs/architecture/mobile-shell.md`) — the gym PWA was demoted to a browser surface in Aug 2026. The shell authenticates via `AuthPlugin` (X-API-Key over the bridge); the edge serves `/m` + assets uncookied. The bridge is URL-agnostic, so plugins work unchanged. Docs under `docs/` carry supersession notes where the older plan assumed native screens.
 
 `docs/capacitor-migration-handoff.md` has the long-form context on how this project got here.
 
@@ -13,7 +13,7 @@ Android telemetry shell for Jimbo. Native Kotlin code collects events from Healt
 - `android/` — Capacitor Android project (the only Gradle build that ships).
 - `android/app/src/main/java/dev/marvinbarretto/jimbo/` — native Kotlin: collectors (`telemetry/`), Room DB (`data/`), plugins (`plugins/`), `MainActivity`, `BridgeRegistry`, `SyncWorker`, `SyncScheduler`, `JimboClient`.
 - `plugins/<name>/` — TypeScript plugin definitions (`definitions.ts` / `index.ts` / `web.ts`), shared with the gym repo. Layout mirrors localshout-next.
-- `capacitor.config.ts` — points the WebView at the gym PWA URL.
+- `capacitor.config.ts` — points the WebView at the dashboard `/m` shell (CAP_SERVER_URL overrides).
 - `docs/` — handoff briefs.
 
 The legacy Kotlin/Compose `app/` module has been deleted — the hosted web UI absorbs everything that used to live in `StatusScreen` / `SettingsScreen`, surfaced through plugins. (Post-cutover that lands in the dashboard `/m` shell, not gym.)

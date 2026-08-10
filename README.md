@@ -2,7 +2,7 @@
 
 Android telemetry capture for Jimbo, packaged as a Capacitor shell that hosts a web UI. Native Kotlin code runs the collectors and background sync; the web app provides the UI and calls into native via Capacitor plugins.
 
-The WebView currently loads the gym Next.js PWA and is moving to the dashboard's phone-first Angular `/m` shell — see [Gym PWA Migration Arc](docs/gym-pwa-migration.md).
+The WebView loads the dashboard's phone-first Angular `/m` shell; the gym Next.js PWA is a browser surface for coach chat, voice logging and history — see [Gym PWA Migration Arc](docs/gym-pwa-migration.md).
 
 ## What it does
 
@@ -43,7 +43,7 @@ Defaults to off in `collector_settings`; enable as each grant lands.
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
 
-3. Launch the app. Capacitor loads the gym PWA in the WebView; native auto-requests Health Connect + Activity Recognition + Location on first launch. Usage Stats and Notification Listener need a trip through system Settings.
+3. Launch the app. Capacitor loads the dashboard `/m` shell in the WebView; native auto-requests Health Connect + Activity Recognition + Location on first launch. Usage Stats and Notification Listener need a trip through system Settings.
 
 4. You need a data source writing to Health Connect (e.g. Google Fit) for HC events to appear.
 
@@ -73,7 +73,7 @@ Plugin capabilities are versioned — when a method is added, the version is bum
 
 ## Tech
 
-Capacitor Android shell hosting a web UI (gym Next.js PWA today, dashboard Angular `/m` shell next). Native modules use Kotlin + WorkManager + Room + Health Connect + Play Services (Activity Recognition + Fused Location). No HTTP library — raw `HttpsURLConnection` because the API VPS is self-signed. See `android/app/build.gradle` and `CLAUDE.md` for the layout and entry points.
+Capacitor Android shell hosting the dashboard's Angular `/m` shell. Native modules use Kotlin + WorkManager + Room + Health Connect + Play Services (Activity Recognition + Fused Location). No HTTP library — raw `HttpsURLConnection` because the API VPS is self-signed. See `android/app/build.gradle` and `CLAUDE.md` for the layout and entry points.
 
 ## Further development
 

@@ -9,11 +9,11 @@
 > **Phase 5** is brought forward and is now the point of the arc.
 > See `dashboard/docs/architecture/mobile-shell.md`.
 
-## Current state
+## Starting state (pre-migration, for context)
 
-The entire native app experience is the gym Next.js PWA loaded in a Capacitor WebView. The native shell collects telemetry in the background but contributes nothing to the UI.
+The entire native app experience was the gym Next.js PWA loaded in a Capacitor WebView. The native shell collected telemetry in the background but contributed nothing to the UI.
 
-`capacitor.config.ts` points the WebView at `https://gym-kohl-theta.vercel.app`.
+`capacitor.config.ts` pointed the WebView at `https://gym-kohl-theta.vercel.app`.
 
 The gym PWA's current features:
 - Workout session logging (exercises, sets, reps, cardio)
@@ -65,10 +65,13 @@ The games (wheel-of-life, hedonic, etc.) are simple enough to port to native Kot
 
 ---
 
-### Phase 5 — Gym PWA becomes browser-only — **now the point of the arc**
-`server.url` points at the dashboard's `/m` shell. The gym PWA still exists but isn't loaded in the WebView; it keeps coach chat, voice logging and session history as a browser surface.
+### Phase 5 — Gym PWA becomes browser-only — **✅ done (Aug 2026)**
+`server.url` defaults to the dashboard's `/m` shell (`capacitor.config.ts`). The gym PWA still exists but isn't loaded in the WebView; it keeps coach chat, voice logging and session history as a browser surface.
 
-**Blocker before flipping:** write parity. The `/m` Train tab and gym write the same tables, and `gym_session_sets` stores an aggregated `sets` count — confirm a mobile-logged session round-trips identically before pulling gym out.
+Write parity was verified before flipping: gym's `jimbo-client.ts` posts to the
+identical endpoints with a subset of the dashboard's fields (it never sends the
+aggregated `sets` count; the server defaults it to 1), so the `/m` Train flow —
+which shares its writers with the desktop exercise page — is a strict superset.
 
 ---
 

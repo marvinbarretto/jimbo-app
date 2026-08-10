@@ -1,23 +1,22 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// Pinning the gym PWA URL via env lets us pin a specific Vercel deployment
-// during native rollouts so we don't chase a moving target. Default to the
-// rolling latest when CAP_SERVER_URL is unset.
-const serverUrl = process.env.CAP_SERVER_URL?.trim() || 'https://gym-kohl-theta.vercel.app';
+// The WebView loads the dashboard's phone shell (gym PWA demoted to a
+// browser surface — migration arc phase 5). CAP_SERVER_URL still overrides
+// for pinning a specific deployment during rollouts.
+const serverUrl = process.env.CAP_SERVER_URL?.trim() || 'https://jimbo.fourfoldmedia.uk/m';
 const serverHost = (() => {
   try {
     return new URL(serverUrl).hostname;
   } catch {
-    return 'gym-kohl-theta.vercel.app';
+    return 'jimbo.fourfoldmedia.uk';
   }
 })();
 
 const allowNavigation = Array.from(new Set([
   serverHost,
-  '*.vercel.app',
-  // jimbo-api itself — gym PWA calls it server-side, but webview can hit it too
-  // during dev/diagnostics.
   'jimbo.fourfoldmedia.uk',
+  // gym PWA — still reachable from the shell for coach chat / voice / history.
+  '*.vercel.app',
 ]));
 
 const config: CapacitorConfig = {

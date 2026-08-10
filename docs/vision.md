@@ -4,7 +4,7 @@
 
 The app started as a telemetry shell wrapping the gym PWA in a Capacitor WebView. The vision ahead is for it to become the primary mobile surface for the whole Jimbo system — with the gym PWA demoted to a browser-only coach/history surface.
 
-> **Updated Aug 2026.** The WebView's content is moving from the gym PWA to a phone-first Angular shell (`/m`) in the dashboard repo. Native keeps the context layer and the launcher; the web surface it hosts is now the dashboard, not gym. Full rationale and sequencing: `dashboard/docs/architecture/mobile-shell.md`. This reverses the "not building a replacement for the dashboard" line below and supersedes parts of the linked roadmaps — each carries its own note.
+> **Updated Aug 2026.** The WebView's content moved from the gym PWA to a phone-first Angular shell (`/m`) in the dashboard repo — shipped, all phases. Native keeps the context layer and the launcher; the web surface it hosts is the dashboard, not gym. Full rationale and sequencing: `dashboard/docs/architecture/mobile-shell.md`. This reverses the "not building a replacement for the dashboard" line below and supersedes parts of the linked roadmaps — each carries its own note.
 
 ---
 

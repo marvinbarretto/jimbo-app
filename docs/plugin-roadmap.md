@@ -4,7 +4,7 @@
 
 Capacitor plugins expose native data to the hosted web surface via `window.__JIMBO_BRIDGE__`. Each plugin follows the pattern in `plugins/<name>/definitions.ts`.
 
-> The consumer is moving from the gym PWA to the dashboard's `/m` shell (see [Mobile Shell](../../jimbo/dashboard/docs/architecture/mobile-shell.md)). The bridge is URL-agnostic — it injects into whatever page loads — so no plugin below changes shape.
+> The consumer is the dashboard's `/m` shell (see [Mobile Shell](../../jimbo/dashboard/docs/architecture/mobile-shell.md)); the gym PWA is a browser surface. The bridge is URL-agnostic — it injects into whatever page loads — so no plugin below changes shape.
 
 Current plugins:
 - `TelemetryPlugin` (v1) — read-only sync status (lastSyncAt, pendingCount, deadLetterCount)
