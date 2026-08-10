@@ -4,7 +4,7 @@
 
 The goal is to move from "WebView that loads the gym PWA" to "native app with WebView as one section". The wedge is a native home screen that appears before and instead of the WebView landing.
 
-> **Updated Aug 2026.** The WebView's content becomes the dashboard's `/m` shell (Today / Log / Train tabs). That doesn't change this doc's premise — native home is still the wedge and still the router — but it does retire two of the native screens below: the gym session screen and the native briefing view. Native builds what only native can. See `dashboard/docs/architecture/mobile-shell.md`.
+> **Updated Aug 2026.** The WebView's content is the dashboard's `/m` shell (Today / Log / Train tabs), and — a second revision — **the shell is currently the launcher, not the native home**. The Phase-1 home card duplicated `/m/today` poorly while the context layer is thin (one stat, no geofence, no adaptive behaviour), so it was demoted: `HomeActivity` stays in the codebase and reclaims the launcher slot when the adaptive context card is genuinely worth a tap before the shell. The retired native screens below (gym session, briefing view) stay retired. Native builds what only native can. See `dashboard/docs/architecture/mobile-shell.md`.
 
 ---
 

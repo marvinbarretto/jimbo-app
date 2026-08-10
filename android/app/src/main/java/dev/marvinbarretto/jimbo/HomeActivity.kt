@@ -33,42 +33,14 @@ import java.util.Locale
 
 class HomeActivity : ComponentActivity() {
 
-    private val requestHealthPermissions = registerForActivityResult(
-        PermissionController.createRequestPermissionResultContract()
-    ) { granted ->
-        if (granted.containsAll(HealthConnectReader.PERMISSIONS)) {
-            SyncScheduler.enqueueManualSync(this)
-        }
-    }
-
-    private val requestRuntimePermissions = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { grants ->
-        if (grants[Manifest.permission.ACTIVITY_RECOGNITION] == true) {
-            ActivityRecognitionManager.register(this)
-        }
-        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true && !hasBackgroundLocation()) {
-            requestBackgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        } else if (hasFineLocation() && hasBackgroundLocation()) {
-            JimboLocationManager.register(this)
-        }
-    }
-
-    private val requestBackgroundLocation = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted && hasFineLocation()) {
-            JimboLocationManager.register(this)
-        }
-    }
+    // Shared with MainActivity (the launcher since the /m cutover) — kept here
+    // too so opening Home directly still completes any missing grants.
+    private val permissions = PermissionBootstrap(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        lifecycleScope.launch {
-            requestHealthPermsIfNeeded()
-            requestRuntimePermsIfNeeded()
-        }
+        permissions.requestIfNeeded()
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
@@ -81,32 +53,6 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun requestHealthPermsIfNeeded() {
-        if (HealthConnectClient.getSdkStatus(this) != HealthConnectClient.SDK_AVAILABLE) return
-        val client = HealthConnectClient.getOrCreate(this)
-        val granted = client.permissionController.getGrantedPermissions()
-        if (!granted.containsAll(HealthConnectReader.PERMISSIONS)) {
-            requestHealthPermissions.launch(HealthConnectReader.PERMISSIONS)
-        }
-    }
-
-    private fun requestRuntimePermsIfNeeded() {
-        val missing = buildList {
-            if (!hasActivityRecognition()) add(Manifest.permission.ACTIVITY_RECOGNITION)
-            if (!hasFineLocation()) add(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        if (missing.isNotEmpty()) {
-            requestRuntimePermissions.launch(missing.toTypedArray())
-        } else if (hasFineLocation() && !hasBackgroundLocation()) {
-            requestBackgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        }
-    }
-
-    private fun hasActivityRecognition() = hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)
-    private fun hasFineLocation() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-    private fun hasBackgroundLocation() = hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-    private fun hasPermission(p: String) =
-        ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
 }
 
 @Composable

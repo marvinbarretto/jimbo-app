@@ -9,6 +9,11 @@ import dev.marvinbarretto.jimbo.plugins.TelemetryPlugin
 
 class MainActivity : BridgeActivity() {
 
+    // As launcher, the WebView shell owns the startup permission flow — a
+    // fresh install must land the Health Connect / activity / location grants
+    // or the collectors run dark. HomeActivity shares the same bootstrap.
+    private val permissions = PermissionBootstrap(this)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // All plugins must be registered before super.onCreate() so they're
         // available when the WebView loads and JS calls Capacitor.Plugins.<Name>.
@@ -25,5 +30,7 @@ class MainActivity : BridgeActivity() {
             registerCapability("auth", 1)
             attachToBridge(bridge)
         }
+
+        permissions.requestIfNeeded()
     }
 }
