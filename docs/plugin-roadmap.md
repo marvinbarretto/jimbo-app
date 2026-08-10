@@ -6,12 +6,15 @@ Capacitor plugins expose native data to the hosted web surface via `window.__JIM
 
 > The consumer is moving from the gym PWA to the dashboard's `/m` shell (see [Mobile Shell](../../jimbo/dashboard/docs/architecture/mobile-shell.md)). The bridge is URL-agnostic — it injects into whatever page loads — so no plugin below changes shape.
 
-The current plugin:
+Current plugins:
 - `TelemetryPlugin` (v1) — read-only sync status (lastSyncAt, pendingCount, deadLetterCount)
+- `ActivityContextPlugin` (v1)
+- `HealthSnapshotPlugin` (v1)
+- `AuthPlugin` (v1) — API credentials for the hosted web shell
 
 ---
 
-## Priority 0 — `AuthPlugin` (blocks the `/m` cutover)
+## Priority 0 — `AuthPlugin` — **built**
 
 `/api/*` and `/stream/*` are cookie-OR-`X-API-Key`, app-gated. Rather than
 depending on a WebView session cookie surviving indefinitely, native hands the
@@ -162,7 +165,7 @@ interface NotificationTriggerPlugin {
 
 Each plugin has a version integer registered in `BridgeRegistry`. Bump the version when adding methods — the PWA uses `window.__JIMBO_BRIDGE__.has(name, version)` to gate calls on the right version.
 
-Current versions: `telemetry@1`.
+Current versions: `telemetry@1`, `activityContext@1`, `healthSnapshot@1`, `auth@1`.
 
 ---
 
