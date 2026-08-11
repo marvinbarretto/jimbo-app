@@ -81,7 +81,7 @@ These are real forks; don't decide silently:
 ## How to verify the current Capacitor shell still works
 
 ```bash
-cd /Users/marvinbarretto/development/jimbo-app/android
+cd /Users/marvinbarretto/development/jimbo/jimbo-app/android
 ./gradlew assembleDebug
 adb -s 38251FDJH000QK install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s 38251FDJH000QK shell am start -n dev.marvinbarretto.jimbo.cap/dev.marvinbarretto.jimbo.cap.MainActivity
