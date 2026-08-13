@@ -1,0 +1,114 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>06 · homepage</title>
+
+<div class="intent"><b>Goal</b>     one stable homepage: glance the day's state up top, act in the
+          thumb zone below — without becoming a dashboard to "review".
+<b>Persona</b>  Marvin opening the app for any reason, any time of day.
+<b>Primary</b>  still the frequents grid — input beats reading on every visit.
+<b>Success</b>  90% of opens end in ≤2 taps: a log, a tick, or a confirmed glance.</div>
+
+<div class="w-title">layout skeleton — what lives where and why</div>
+<div class="frame">
+  <div class="w-bar"><span>GLANCE BAR — read-only, never taps</span><span class="w-dim">top</span></div>
+  <div class="w-placeholder">kcal so far · steps · next fixed thing
+(live-status + HealthSnapshot plugin — data already on device)</div>
+  <div class="w-bar"><span>NOW CARD — swaps by daypart/state</span><span class="w-dim">upper third</span></div>
+  <div class="w-placeholder">morning: day's shape · during focus: timer
+evening: close-out progress — one card, never stacked</div>
+  <div class="w-bar"><span>ATTENTION ROW — only if nonzero</span><span class="w-dim">middle</span></div>
+  <div class="w-placeholder">agents waiting · sync broken · checks unanswered
+absent entirely when there's nothing — no empty chrome</div>
+  <div class="w-bar"><span>QUICK LOG — frequents grid + supplement</span><span class="w-dim">thumb zone</span></div>
+  <div class="w-placeholder">identical grid to 01, always in the same place,
+reachable one-handed. The anchor of the page.</div>
+  <div class="w-tabs"><span class="on">Home</span><span>Log</span><span>Train</span><span>Day</span></div>
+</div>
+
+<div class="notes">— Structure is fixed, content swaps: same 4 slots at 07:00 and 23:00 so muscle memory holds.
+  This is the adaptive-home-card idea from native-ui-roadmap.md, landed in /m instead of Compose.
+— Glance bar is deliberately not tappable — it answers "where am I in the day" and nothing else.
+— One NOW card at a time; competing cards queue by priority (focus &gt; evening close &gt; day shape).
+— Log tab remains as the full screen (01) — homepage carries its top 4 frequents, not all 6 + ledger.</div>
+
+<hr class="w-sep">
+<div class="state-label">state: morning · 07:10</div>
+<div class="frame">
+  <div class="w-bar"><span>Wed 13 Aug</span><span class="w-dim">0 kcal · 240 steps · standup 11:30</span></div>
+
+  <div style="border:2px solid #222; padding:8px; margin-bottom:10px">
+    <div class="w-h2">Today's shape · 3 blocks</div>
+    <div class="w-list-item"><span>09:00 · digest API <span class="w-chip">deadline real</span></span><span>90m</span></div>
+    <div class="w-list-item"><span>11:00 · grooming queue</span><span>45m</span></div>
+    <div class="w-list-item"><span>18:00 · gym — pull day</span><span>60m</span></div>
+    <div class="w-row"><button class="w-btn-ghost">looks right ✓</button><button class="w-btn-ghost">reshuffle ↻</button></div>
+  </div>
+
+  <div class="w-h3">Quick log</div>
+  <div class="w-grid">
+    <div class="w-cell"><b>granola + greek yogurt</b><span class="w-dim">320 kcal</span></div>
+    <div class="w-cell"><b>creatine 5g</b><span class="w-dim">not yet today</span></div>
+    <div class="w-cell"><b>1 pale ale</b><span class="w-dim">180 kcal</span></div>
+    <div class="w-cell" data-goto="01"><b>more →</b><span class="w-dim">full log</span></div>
+  </div>
+  <div class="w-tabs"><span class="on">Home</span><span data-goto="01">Log</span><span>Train</span><span>Day</span></div>
+</div>
+<div class="notes">— Morning grid re-ranks by daypart: breakfast + supplement first, beer demoted (frequents
+  scored by time-of-day histogram — his granola logs cluster 13:30–16:00, beer 20:00+).
+— "looks right ✓" is a one-tap commit of the proposed day — the negotiation collapsed
+  to its cheapest possible form. Reshuffle opens the full blocks view only if wanted.</div>
+
+<div class="state-label">state: midday · 14:20 · focus session live</div>
+<div class="frame">
+  <div class="w-bar"><span>Wed 13 Aug</span><span class="w-dim">840 kcal · 4,120 steps · gym 18:00</span></div>
+
+  <div style="border:2px solid #222; padding:8px; margin-bottom:10px">
+    <div class="w-h2">Focus · digest API — 23m left</div>
+    <div class="w-placeholder" style="margin:4px 0">▮▮▮▮▮▮▮░░░ 72%</div>
+    <div class="w-row"><button class="w-btn-ghost">pause</button><button class="w-btn-ghost">+15m</button><button class="w-btn-ghost">done →</button></div>
+  </div>
+
+  <div class="w-list-item" data-goto="05"><span>⚠ 2 agents waiting · oldest 3h</span><span>review →</span></div>
+
+  <div class="w-h3">Quick log</div>
+  <div class="w-grid">
+    <div class="w-cell"><b>chicken breasts 500g</b><span class="w-dim">550 kcal</span></div>
+    <div class="w-cell"><b>granola + greek yogurt</b><span class="w-dim">320 kcal</span></div>
+    <div class="w-cell"><b>1 pale ale</b><span class="w-dim">180 kcal</span></div>
+    <div class="w-cell" data-goto="01"><b>more →</b><span class="w-dim">full log</span></div>
+  </div>
+  <div class="w-tabs"><span class="on">Home</span><span data-goto="01">Log</span><span>Train</span><span>Day</span></div>
+</div>
+<div class="notes">— "done →" on the focus card triggers the 04 moment check-in sheet — the completion moment
+  is created right here, on the homepage.
+— Attention row shows the agents item only because n&gt;0; sync-broken and checks-undone rows
+  are absent, so the row costs nothing today.</div>
+
+<div class="state-label">state: evening · 21:15</div>
+<div class="frame">
+  <div class="w-bar"><span>Wed 13 Aug</span><span class="w-dim">1,840 kcal · 11,204 steps · nothing next</span></div>
+
+  <div style="border:2px solid #222; padding:8px; margin-bottom:10px">
+    <div class="w-h2">Close out Wednesday · 2/8</div>
+    <div class="w-placeholder" style="margin:4px 0">▮▮░░░░░░ — 6 taps left, ~30s</div>
+    <button class="w-btn-primary" data-goto="03" style="margin:4px 0 0">Finish the day →</button>
+  </div>
+
+  <div class="w-h3">Quick log</div>
+  <div class="w-grid">
+    <div class="w-cell"><b>1 pale ale</b><span class="w-dim">180 kcal · logged ×2 tonight</span></div>
+    <div class="w-cell"><b>Guinness</b><span class="w-dim">210 kcal</span></div>
+    <div class="w-cell"><b>gin &amp; diet tonic</b><span class="w-dim">120 kcal</span></div>
+    <div class="w-cell" data-goto="01"><b>more →</b><span class="w-dim">full log</span></div>
+  </div>
+
+  <div class="w-list-item" data-goto="02"><span>gym session logged 18:04 ✓ · mood noted ✓</span><span class="w-dim">today, quietly</span></div>
+  <div class="w-tabs"><span class="on">Home</span><span data-goto="01">Log</span><span>Train</span><span>Day</span></div>
+</div>
+<div class="notes">— Evening grid: drinks promoted (his 20:00+ pattern), breakfast gone.
+— The close-out card shows remaining tap-cost ("6 taps left, ~30s") — pricing the ask is
+  what makes it get done, vs the empty-reflection pattern.
+— Bottom line is passive reassurance: what the day already captured without him.
+— Trade-off accepted: no vault/project/briefing-reading surface on the homepage at all.
+  Reading lives in Day (replay/journal) and the desktop; the phone home is for state + input.</div>
+
+<script src="wire-nav.js"></script>

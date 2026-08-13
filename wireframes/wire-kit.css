@@ -1,0 +1,84 @@
+/* wire-kit — shared wireframe primitives. Greyscale, monospace, structure only. */
+* { box-sizing: border-box; }
+body {
+  background: #cfcfcf;
+  color: #222;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+  padding: 2rem 1rem 4rem;
+}
+.frame {
+  width: 390px;
+  margin: 0 auto 2rem;
+  background: #fff;
+  border: 2px solid #222;
+  padding: 14px;
+}
+.intent {
+  width: 390px;
+  margin: 0 auto 1rem;
+  background: #efefef;
+  border: 1px dashed #666;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+}
+.intent b { text-transform: uppercase; }
+.w-title { text-align: center; margin: 0 auto 0.5rem; width: 390px; font-weight: 700; }
+
+.w-bar { background: #e2e2e2; border: 1px solid #555; padding: 6px 8px; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 8px; }
+.w-h1 { font-size: 17px; font-weight: 700; margin: 4px 0 2px; }
+.w-h2 { font-size: 14px; font-weight: 700; margin: 12px 0 4px; }
+.w-h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #555; margin: 12px 0 4px; }
+.w-body { margin: 2px 0 8px; }
+.w-dim { color: #777; font-size: 12px; }
+
+.w-btn-primary {
+  display: block; width: 100%; text-align: center;
+  background: #222; color: #fff; padding: 10px; font-weight: 700;
+  border: 2px solid #222; margin: 10px 0 4px; cursor: pointer; font-family: inherit; font-size: 13px;
+}
+.w-btn-ghost {
+  display: inline-block; background: #fff; color: #222;
+  border: 1px solid #555; padding: 6px 10px; cursor: pointer; font-family: inherit; font-size: 12px;
+}
+.w-input { background: #fff; border: 1px solid #555; padding: 8px; margin: 4px 0; color: #777; }
+.w-list-item { border: 1px solid #999; border-top: none; padding: 7px 8px; display: flex; justify-content: space-between; gap: 8px; }
+.w-list-item:first-of-type { border-top: 1px solid #999; }
+.w-chip { display: inline-block; border: 1px solid #777; padding: 1px 6px; font-size: 11px; background: #eee; }
+.w-placeholder { border: 1px dashed #888; color: #888; text-align: center; padding: 14px 8px; margin: 6px 0; }
+.w-tabs { display: flex; border: 1px solid #555; margin-bottom: 10px; }
+.w-tabs span { flex: 1; text-align: center; padding: 6px 0; border-right: 1px solid #555; }
+.w-tabs span:last-child { border-right: none; }
+.w-tabs span.on { background: #222; color: #fff; font-weight: 700; }
+
+.w-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; }
+.w-grid .w-cell {
+  border: 1px solid #444; padding: 8px; cursor: pointer; background: #fafafa;
+}
+.w-cell b { display: block; }
+.w-row { display: flex; gap: 6px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+.w-dots { letter-spacing: 4px; font-size: 16px; cursor: pointer; }
+
+.w-sep { border: none; border-top: 3px double #555; margin: 22px 0 10px; }
+.state-label { width: 390px; margin: 0 auto 4px; font-weight: 700; text-transform: uppercase; font-size: 11px; color: #555; }
+
+.notes {
+  width: 390px; margin: 0.25rem auto 1.5rem;
+  background: #ffffd9; border: 1px solid #999; padding: 8px 12px; font-size: 12px;
+  white-space: pre-wrap;
+}
+.notes::before { content: "NOTES:"; font-weight: 700; display: block; }
+
+[data-goto] { outline-offset: 2px; }
+[data-goto]:hover { outline: 2px solid #06c; cursor: pointer; }
+
+.wire-nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  background: #222; color: #fff; padding: 6px 12px;
+  display: flex; gap: 14px; align-items: center; z-index: 10; font-size: 12px;
+}
+.wire-nav a { color: #fff; }
+.wire-nav .spacer { flex: 1; }
+body { padding-top: 3.2rem; }

@@ -1,0 +1,47 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>03 · evening checks</title>
+
+<div class="intent"><b>Goal</b>     close the day's 8 standing checks in under 30 seconds.
+<b>Persona</b>  21:30 Marvin, honest for about four minutes, thumb only.
+<b>Primary</b>  Done — writes each answer via PUT /api/day-checks/{id}/entry
+<b>Success</b>  6 tap-answers + 2 optional texts; watchdog gets evidence nightly.</div>
+
+<div class="frame">
+  <div class="w-bar"><span data-goto="01">← Log</span><span>Close out Wednesday</span><span class="w-dim">2/8</span></div>
+
+  <div class="w-h3">Tap — yes / no</div>
+  <div class="w-list-item"><span>Started the day with the Start Sequence</span><span><button class="w-btn-ghost">✓</button> <button class="w-btn-ghost">✗</button></span></div>
+  <div class="w-list-item"><span>Left the house</span><span><b>[✓]</b> <button class="w-btn-ghost">✗</button></span></div>
+  <div class="w-list-item"><span>Ate something that wasn't just convenient</span><span><button class="w-btn-ghost">✓</button> <button class="w-btn-ghost">✗</button></span></div>
+
+  <div class="w-h3">Tap — scale of 5</div>
+  <div class="w-list-item"><span>Energy</span><span class="w-dots">●●●○○</span></div>
+  <div class="w-list-item"><span>Mood</span><span class="w-dots">●●●●○</span></div>
+
+  <div class="w-h3">Optional — collapsed by default</div>
+  <div class="w-list-item"><span>Biggest behaviour today</span><span class="w-dim">🎤 / type / skip ▸</span></div>
+  <div class="w-list-item"><span>What made today feel worthwhile</span><span class="w-dim">🎤 / type / skip ▸</span></div>
+
+  <button class="w-btn-primary" data-goto="01">Done — 6 answered, 2 skipped</button>
+</div>
+
+<div class="notes">— Order is by tap-cost: binaries → scales → text. Text questions must never gate the Done button (reflection highs/lows have been empty 4 days straight — the ask is too heavy; this makes light the default).
+— Receipts assist inline where telemetry knows the answer: "Left the house" pre-suggests ✓ when location/activity saw an exit — shown pre-ticked with dotted outline, one tap confirms or flips.
+— This screen IS what the Telegram nudge should deep-link to; standalone mood/energy nudges retire (31/41 ignored).
+— Also reachable from the Today tab strip after 18:00.</div>
+
+<hr class="w-sep">
+<div class="state-label">state: all answered</div>
+<div class="frame">
+  <div class="w-placeholder">Wednesday closed · 8/8
+streak: 4 days · see you tomorrow</div>
+</div>
+
+<div class="state-label">state: partially answered, reopened later</div>
+<div class="frame">
+  <div class="w-bar"><span>Close out Wednesday</span><span class="w-dim">6/8 · 2 skipped</span></div>
+  <div class="w-placeholder">answered rows collapse to single ticked lines;
+skipped text rows stay open until logical-day rollover.</div>
+</div>
+
+<script src="wire-nav.js"></script>

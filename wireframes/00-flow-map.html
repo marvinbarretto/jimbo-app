@@ -1,0 +1,41 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>00 · flow map — daily quick input</title>
+
+<div class="w-title">FLOW: DAILY QUICK INPUT</div>
+
+<div class="intent"><b>Persona</b>   Marvin, phone in one hand, mid-life. Arrives wanting to log
+          a thing he just ate/drank/did in &lt;5 seconds, then leave.
+<b>Job</b>       capture the 4 daily input types he demonstrably produces
+          (food/drink 3–6×, supplement 1×, mood/energy at moments,
+          evening day-checks) at minimum tap cost.
+<b>Entry</b>     app open → Log tab · home widget · finish-moment overlays
+<b>Exit</b>      entry visible in today's ledger; phone back in pocket.
+<b>Viewport</b>  mobile 390 — deliberate: this IS the phone shell (/m).</div>
+
+<div class="frame">
+  <div class="w-h1">Journey</div>
+  <div class="w-list-item" data-goto="01"><span><b>01 log home</b> — frequents grid, supplement tick, today ledger</span><span>tap →</span></div>
+  <div class="w-list-item" data-goto="02"><span><b>02 new item</b> — free text → LLM estimate (the exception path)</span><span>tap →</span></div>
+  <div class="w-list-item" data-goto="03"><span><b>03 evening checks</b> — 8 day-checks as a 30-second strip</span><span>tap →</span></div>
+  <div class="w-list-item" data-goto="04"><span><b>04 moment check-in</b> — mood/energy overlay at completions</span><span>tap →</span></div>
+  <div class="w-list-item" data-goto="05"><span><b>05 entry points</b> — widget / QS tile / share target (native)</span><span>tap →</span></div>
+  <div class="w-list-item" data-goto="06"><span><b>06 homepage</b> — glance top / act bottom; NOW card swaps by daypart</span><span>tap →</span></div>
+  <div class="w-list-item" data-goto="07"><span><b>07 homepage lo-fi</b> — 06 + 8-tile launcher; daypart switcher preview</span><span>tap →</span></div>
+
+  <div class="w-h2">Evidence this is the right flow</div>
+  <div class="w-body w-dim">— food-log: 3–6 entries/day, every day; "1 pale ale" ×8 in last 30
+— duplicates logged same minute (20:14 ×3, 20:36 ×2) → need undo/dedupe
+— entries batch-stamped 11:00 → morning-after backfill is a real mode
+— telegram nudges: 31/41 ignored; pomo-completion check-ins: 8/8 answered
+— creatine logged manually most days, never via nudges
+— 8 standing day-checks exist server-side, absent from /m
+— reflection rows exist but highs/lows empty 4 days running</div>
+</div>
+
+<div class="notes">— Open Q: frequents ranking — server /api/coach/food-log/frequent as-is, or recency-weighted client-side?
+— Open Q: dedupe window (same text ≤90s = collapse?) — server or client?
+— Open Q: does the evening strip replace the Telegram nudges entirely, or do nudges deep-link into 03?
+— Open Q: widget auth — BuildConfig key via AuthPlugin is WebView-side; widget needs its own native POST path.
+— Secondary persona (guest shown the phone) not served; fine.</div>
+
+<script src="wire-nav.js"></script>

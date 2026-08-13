@@ -1,0 +1,36 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>05 · entry points (native)</title>
+
+<div class="intent"><b>Goal</b>     make the two commonest logs possible without opening the app.
+<b>Persona</b>  Marvin with the phone on the table, beer in hand, app closed.
+<b>Primary</b>  widget tap → logged (native POST, notification confirms with undo)
+<b>Success</b>  a meaningful share of daily entries arrive with zero app opens.</div>
+
+<div class="w-title">home-screen widget (2×2, Glance / Kotlin)</div>
+<div class="frame">
+  <div class="w-h3">Jimbo · quick log</div>
+  <div class="w-grid">
+    <div class="w-cell"><b>1 pale ale</b></div>
+    <div class="w-cell"><b>Guinness</b></div>
+    <div class="w-cell"><b>granola + yogurt</b></div>
+    <div class="w-cell"><b>creatine ✓</b></div>
+  </div>
+  <div class="w-dim">tap → native POST /api/coach/food-log → notification
+"✓ 1 pale ale · 180 kcal  [undo]" — no app launch, no WebView.</div>
+</div>
+
+<div class="w-title">quick-settings tile + share target</div>
+<div class="frame">
+  <div class="w-list-item"><span>QS tile: ⊕ Quick log</span><span class="w-dim">opens 01 directly</span></div>
+  <div class="w-list-item"><span>Android share target: "Send to Jimbo"</span><span class="w-dim">→ vault inbox</span></div>
+  <div class="w-placeholder">share target replaces any capture screen —
+links/thoughts already flow via Telegram; this just adds
+the OS-native path. No new UI beyond the share sheet.</div>
+</div>
+
+<div class="notes">— Widget cells mirror the top 4 of the same /frequent payload; taps sync via the existing offline queue rules.
+— Auth: widget can't ride AuthPlugin (WebView-only) — native path reuses JimboClient with BuildConfig key, same as telemetry sync.
+— This is deliberately a native-surface play; everything else in the flow stays in /m.
+— Undo in the confirming notification covers the double-tap risk at zero UI cost.</div>
+
+<script src="wire-nav.js"></script>

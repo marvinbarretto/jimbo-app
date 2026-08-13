@@ -1,0 +1,39 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>04 · moment check-in</title>
+
+<div class="intent"><b>Goal</b>     capture mood/energy at the moments he already answers (completions),
+          never as a standalone push.
+<b>Persona</b>  Marvin 5 seconds after finishing a gym session or focus block.
+<b>Primary</b>  two dot-taps (mood, energy) → POST /api/checkins with source context
+<b>Success</b>  answer rate at completions stays ~100%; telegram nudges retired.</div>
+
+<div class="w-title">overlay sheet — rides on whatever screen finished</div>
+<div class="frame">
+  <div class="w-placeholder" style="min-height:120px">underlying screen: /m/train session summary
+(dimmed — sheet slides over bottom third only)</div>
+  <div style="border:2px solid #222; padding:10px">
+    <div class="w-h2">Session done · 12 sets · 1h 04</div>
+    <div class="w-list-item"><span>Mood</span><span class="w-dots">○○○○○</span></div>
+    <div class="w-list-item"><span>Energy</span><span class="w-dots">○○○○○</span></div>
+    <div class="w-row">
+      <button class="w-btn-ghost" data-goto="01">skip</button>
+      <span class="w-dim">auto-dismisses on 2nd tap — no confirm button</span>
+    </div>
+  </div>
+</div>
+
+<div class="notes">— The whole design is the trigger, not the widget: pomo-complete check-ins ran 8/8 answered while
+  push nudges ran 10/41. Attach to: gym finish, focus complete, evening-checks Done, first food log of the day.
+— Two taps, zero navigation, no confirm — second dot-tap saves and dismisses.
+— context payload carries the moment ({trigger:"gym_finish", session_id}) so the correlation layer
+  can later separate post-gym mood from baseline mood.
+— Cap: max 3 sheets/day, never twice within 2h — the moment must stay cheap.
+— Skip is honest and frictionless; a skipped sheet never re-asks for that moment.</div>
+
+<hr class="w-sep">
+<div class="state-label">state: answered (auto-dismiss)</div>
+<div class="frame">
+  <div class="w-bar"><span>✓ noted — mood 4 · energy 3</span><span class="w-dim">gone in 1s</span></div>
+</div>
+
+<script src="wire-nav.js"></script>

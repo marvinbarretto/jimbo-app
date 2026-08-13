@@ -1,0 +1,49 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>02 · new item</title>
+
+<div class="intent"><b>Goal</b>     capture a genuinely new food/drink with zero macro thinking.
+<b>Persona</b>  Marvin mid-meal with something he hasn't logged before.
+<b>Primary</b>  Save — fires POST /api/coach/food-log with estimate:true
+<b>Success</b>  saved even when the LLM estimate fails; macros arrive async.</div>
+
+<div class="frame">
+  <div class="w-bar"><span data-goto="01">← Log</span><span>New item</span><span></span></div>
+
+  <div class="w-input">big indian meal - biryani, dal, chicken…</div>
+  <div class="w-row">
+    <button class="w-btn-ghost">🎤 speak it</button>
+    <button class="w-btn-ghost">▦ barcode instead</button>
+  </div>
+
+  <div class="w-h3">When</div>
+  <div class="w-row">
+    <span class="w-chip">● now</span>
+    <span class="w-chip">earlier today</span>
+    <span class="w-chip">yesterday eve</span>
+  </div>
+
+  <button class="w-btn-primary" data-goto="01">Save — Jimbo estimates the macros</button>
+  <div class="w-dim" style="text-align:center">no portion maths, no database search, free text is fine</div>
+</div>
+
+<div class="notes">— This is the exception path (~1 in 5 entries by the data); it must not sit on the main path.
+— Server behaviour already correct: estimateFood() failure still saves the row with null macros — the UI promises save, never promises numbers.
+— Voice matters here: "big indian meal" strings are dictation-shaped.
+— Repeated new items graduate into the frequents grid automatically — no "save as favourite" chore.</div>
+
+<hr class="w-sep">
+<div class="state-label">state: estimating (after save — non-blocking)</div>
+<div class="frame">
+  <div class="w-bar"><span><b>✓ saved</b></span><span class="w-chip">estimating macros…</span></div>
+  <div class="w-placeholder">user is already back on 01; estimate lands in the ledger row
+when ready. Never make him watch a spinner for an LLM.</div>
+</div>
+
+<div class="state-label">state: estimate failed</div>
+<div class="frame">
+  <div class="w-list-item"><span>20:14 · big indian meal…</span><span class="w-chip">kcal pending — tap to retry</span></div>
+  <div class="w-placeholder">row exists, macros null (matches API). Retry = re-estimate;
+or long-press → enter kcal manually (/food-log/manual).</div>
+</div>
+
+<script src="wire-nav.js"></script>

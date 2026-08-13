@@ -1,0 +1,228 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>07 · homepage lo-fi</title>
+<style>
+  /* lo-fi layer: real proportions + tap targets, still greyscale-flat */
+  .lofi {
+    width: 390px; margin: 0 auto 1.5rem; background: #f5f5f4; border: 2px solid #222;
+    border-radius: 24px; overflow: hidden;
+    font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 14px; color: #1c1c1c;
+  }
+  .lofi * { box-sizing: border-box; }
+  .lf-glance {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 14px 16px 10px; font-size: 12.5px; color: #555;
+  }
+  .lf-glance b { color: #1c1c1c; font-size: 14px; }
+  .lf-pad { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+
+  .lf-card { background: #fff; border: 1px solid #d9d9d6; border-radius: 14px; padding: 14px; }
+  .lf-card h3 { margin: 0 0 8px; font-size: 15px; }
+  .lf-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; }
+  .lf-row + .lf-row { border-top: 1px solid #eee; }
+  .lf-dim { color: #777; font-size: 12.5px; }
+  .lf-pill { font-size: 11px; background: #eceleb; background: #ecece9; border: 1px solid #ccc; border-radius: 99px; padding: 2px 8px; color: #444; }
+  .lf-btn {
+    background: #1c1c1c; color: #fff; border: none; border-radius: 10px;
+    padding: 12px; font-size: 14px; font-weight: 600; width: 100%; cursor: pointer; font-family: inherit;
+  }
+  .lf-ghost {
+    background: #fff; color: #1c1c1c; border: 1.5px solid #bbb; border-radius: 10px;
+    padding: 9px 12px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+
+  .lf-shortcuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .lf-sc {
+    background: #fff; border: 1px solid #d9d9d6; border-radius: 12px;
+    min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; cursor: pointer; position: relative; padding: 6px 2px;
+  }
+  .lf-sc:hover { border-color: #1c1c1c; }
+  .lf-sc .ic { width: 22px; height: 22px; border: 2px solid #444; border-radius: 6px; display: grid; place-items: center; font-size: 11px; color: #444; }
+  .lf-sc span { font-size: 10.5px; color: #333; }
+  .lf-badge {
+    position: absolute; top: -5px; right: -5px; background: #1c1c1c; color: #fff;
+    font-size: 10px; min-width: 17px; height: 17px; border-radius: 99px;
+    display: grid; place-items: center; padding: 0 4px;
+  }
+
+  .lf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .lf-food {
+    background: #fff; border: 1px solid #d9d9d6; border-radius: 12px; padding: 10px 12px;
+    min-height: 56px; cursor: pointer;
+  }
+  .lf-food:hover { border-color: #1c1c1c; }
+  .lf-food b { display: block; font-size: 13.5px; }
+  .lf-food small { color: #777; font-size: 11px; }
+
+  .lf-attn {
+    background: #efefec; border: 1px dashed #999; border-radius: 12px; padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px;
+  }
+
+  .lf-nav { display: flex; border-top: 1px solid #d9d9d6; background: #fff; }
+  .lf-nav div { flex: 1; text-align: center; padding: 11px 0 14px; font-size: 11.5px; color: #888; cursor: pointer; }
+  .lf-nav div.on { color: #1c1c1c; font-weight: 700; }
+  .lf-nav .nic { width: 20px; height: 14px; border: 2px solid currentColor; border-radius: 4px; margin: 0 auto 3px; }
+
+  .switcher { width: 390px; margin: 0 auto 10px; display: flex; gap: 6px; justify-content: center; }
+  .switcher button {
+    font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 5px 12px;
+    border: 1px solid #555; background: #fff; cursor: pointer;
+  }
+  .switcher button.on { background: #222; color: #fff; }
+  .hidden { display: none; }
+</style>
+
+<div class="intent"><b>Goal</b>     same four slots as 06, plus a launcher: every frequent destination
+          reachable in exactly one tap from the top of the app.
+<b>Persona</b>  Marvin opening the app with a destination already in mind.
+<b>Primary</b>  still the quick-log grid; shortcuts are the fast lane, not the hero.
+<b>Success</b>  no destination in the suite is ever &gt;2 taps from app-open.</div>
+
+<div class="switcher">
+  <button data-dp="morning" class="on">morning 07:10</button>
+  <button data-dp="midday">midday 14:20</button>
+  <button data-dp="evening">evening 21:15</button>
+</div>
+
+<div class="lofi">
+  <div class="lf-glance">
+    <span id="g-date"><b>Thu 13 Aug</b></span>
+    <span id="g-stats">0 kcal · 240 steps</span>
+    <span id="g-next">standup 11:30</span>
+  </div>
+
+  <div class="lf-pad">
+    <!-- NOW card -->
+    <div class="lf-card dp dp-morning">
+      <h3>Today's shape <span class="lf-dim">· 3 blocks</span></h3>
+      <div class="lf-row"><span>09:00 · digest API</span><span class="lf-pill">deadline real</span></div>
+      <div class="lf-row"><span>11:00 · grooming queue</span><span class="lf-dim">45m</span></div>
+      <div class="lf-row"><span>18:00 · gym — pull day</span><span class="lf-dim">60m</span></div>
+      <div class="lf-row" style="border:none; padding-top:10px">
+        <button class="lf-btn" style="flex:1">Looks right ✓</button>
+        <button class="lf-ghost">↻</button>
+      </div>
+    </div>
+    <div class="lf-card dp dp-midday hidden">
+      <h3>Focus · digest API <span class="lf-dim">· 23m left</span></h3>
+      <div style="height:8px; background:#e6e6e2; border-radius:99px; overflow:hidden; margin:4px 0 12px">
+        <div style="width:72%; height:100%; background:#444"></div>
+      </div>
+      <div class="lf-row" style="border:none">
+        <button class="lf-ghost" style="flex:1">pause</button>
+        <button class="lf-ghost" style="flex:1">+15m</button>
+        <button class="lf-btn" style="flex:1.4">done →</button>
+      </div>
+    </div>
+    <div class="lf-card dp dp-evening hidden">
+      <h3>Close out Wednesday <span class="lf-dim">· 2/8 · ~30s left</span></h3>
+      <div style="height:8px; background:#e6e6e2; border-radius:99px; overflow:hidden; margin:4px 0 12px">
+        <div style="width:25%; height:100%; background:#444"></div>
+      </div>
+      <button class="lf-btn" data-goto="03">Finish the day →</button>
+    </div>
+
+    <!-- SHORTCUTS: the launcher -->
+    <div class="lf-shortcuts">
+      <div class="lf-sc"><div class="ic">▶</div><span>Focus</span></div>
+      <div class="lf-sc"><div class="ic">≡</div><span>Train</span></div>
+      <div class="lf-sc"><div class="ic">▦</div><span>Scan</span></div>
+      <div class="lf-sc" data-goto="02"><div class="ic">⌨</div><span>New item</span></div>
+      <div class="lf-sc"><div class="ic">◔</div><span>Replay</span></div>
+      <div class="lf-sc"><div class="ic">⚑</div><span>Fleet</span><i class="lf-badge dp dp-midday hidden">2</i></div>
+      <div class="lf-sc"><div class="ic">☰</div><span>Briefing</span></div>
+      <div class="lf-sc" data-goto="03"><div class="ic">✓</div><span>Close day</span><i class="lf-badge dp dp-evening hidden">6</i></div>
+    </div>
+
+    <!-- attention row: midday only in this mock -->
+    <div class="lf-attn dp dp-midday hidden" data-goto="05">
+      <span>⚑ 2 agents waiting · oldest 3h</span><span><b>review →</b></span>
+    </div>
+
+    <!-- QUICK LOG -->
+    <div>
+      <div class="lf-dim" style="margin:0 2px 6px; text-transform:uppercase; font-size:10.5px; letter-spacing:0.06em">Quick log</div>
+      <div class="lf-grid" id="foodgrid"></div>
+    </div>
+
+    <!-- passive reassurance line, evening -->
+    <div class="lf-dim dp dp-evening hidden" style="text-align:center">
+      gym 18:04 ✓ · mood noted ✓ · captured quietly
+    </div>
+  </div>
+
+  <div class="lf-nav">
+    <div class="on"><div class="nic"></div>Home</div>
+    <div data-goto="01"><div class="nic"></div>Log</div>
+    <div><div class="nic"></div>Train</div>
+    <div><div class="nic"></div>Day</div>
+  </div>
+</div>
+
+<div class="notes">— The launcher is 8 fixed tiles, alphabet of the suite: Focus (POST /focus-sessions), Train (/m/train),
+  Scan (barcode → food-log), New item, Replay (/api/journal/day view), Fleet (dispatch review),
+  Briefing (read latest), Close day (03). Position never changes; badges carry the "now" signal
+  (Fleet 2 at midday, Close day 6-remaining in the evening).
+— Shortcuts sit between NOW card and food grid: high enough to scan, low enough to thumb.
+— Tiles are navigation ONLY — none of them log anything. One-tap logging stays in the food grid,
+  so muscle memory can't misfire between "go somewhere" and "record something".
+— Badge rule = attention row rule: only nonzero, only actionable.
+— Icons are placeholder glyphs; real set comes at visual-design time, labels are the contract.
+— Grid still re-ranks by daypart (switcher above previews it): granola+creatine morning,
+  chicken midday, drinks evening — straight from his logged time-of-day histogram.</div>
+
+<script src="wire-nav.js"></script>
+<script>
+  (function () {
+    var GRIDS = {
+      morning: [
+        ['granola + greek yogurt', '320 kcal'],
+        ['creatine 5g', 'not yet today'],
+        ['1 pale ale', '180 kcal'],
+        ['more →', 'full log', '01']
+      ],
+      midday: [
+        ['chicken breasts 500g', '550 kcal · 110g protein'],
+        ['granola + greek yogurt', '320 kcal'],
+        ['1 pale ale', '180 kcal'],
+        ['more →', 'full log', '01']
+      ],
+      evening: [
+        ['1 pale ale', '180 kcal · ×2 tonight'],
+        ['Guinness', '210 kcal'],
+        ['gin & diet tonic', '120 kcal'],
+        ['more →', 'full log', '01']
+      ]
+    };
+    var GLANCE = {
+      morning: ['0 kcal · 240 steps', 'standup 11:30'],
+      midday: ['840 kcal · 4,120 steps', 'gym 18:00'],
+      evening: ['1,840 kcal · 11,204 steps', 'nothing next']
+    };
+    function render(dp) {
+      document.querySelectorAll('.switcher button').forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-dp') === dp);
+      });
+      document.querySelectorAll('.dp').forEach(function (el) {
+        el.classList.toggle('hidden', !el.classList.contains('dp-' + dp));
+      });
+      document.getElementById('g-stats').textContent = GLANCE[dp][0];
+      document.getElementById('g-next').textContent = GLANCE[dp][1];
+      var grid = document.getElementById('foodgrid');
+      grid.innerHTML = '';
+      GRIDS[dp].forEach(function (item) {
+        var d = document.createElement('div');
+        d.className = 'lf-food';
+        if (item[2]) d.setAttribute('data-goto', item[2]);
+        d.innerHTML = '<b>' + item[0] + '</b><small>' + item[1] + '</small>';
+        grid.appendChild(d);
+      });
+    }
+    document.querySelectorAll('.switcher button').forEach(function (b) {
+      b.addEventListener('click', function () { render(b.getAttribute('data-dp')); });
+    });
+    render('morning');
+  })();
+</script>

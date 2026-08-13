@@ -1,0 +1,73 @@
+<link rel="stylesheet" href="wire-kit.css">
+<title>01 · log home</title>
+
+<div class="intent"><b>Goal</b>     log the thing just consumed in one tap; everything else subordinate.
+<b>Persona</b>  Marvin at 20:14 with a pale ale in the other hand.
+<b>Primary</b>  tap a frequent → logged instantly (POST /api/coach/food-log, prefilled macros)
+<b>Success</b>  entry appears in ledger ≤1s; no typing on a repeat item; dupes collapsed.</div>
+
+<div class="frame">
+  <div class="w-bar"><span>Log</span><span class="w-dim">Wed 12 Aug · 1,840 kcal so far</span></div>
+
+  <div class="w-row">
+    <span class="w-dim">logging for:</span>
+    <span class="w-chip">● now</span>
+    <span class="w-chip" title="backfill mode">yesterday eve</span>
+  </div>
+
+  <div class="w-h3">Frequents — 1 tap = logged</div>
+  <div class="w-grid">
+    <div class="w-cell" data-goto="01"><b>1 pale ale</b><span class="w-dim">180 kcal · ×8 this month</span></div>
+    <div class="w-cell"><b>granola + greek yogurt</b><span class="w-dim">320 kcal</span></div>
+    <div class="w-cell"><b>1 Guinness</b><span class="w-dim">210 kcal</span></div>
+    <div class="w-cell"><b>gin &amp; diet tonic</b><span class="w-dim">120 kcal</span></div>
+    <div class="w-cell"><b>chicken breasts 500g</b><span class="w-dim">550 kcal · 110g protein</span></div>
+    <div class="w-cell"><b>Punk IPA</b><span class="w-dim">225 kcal · barcode</span></div>
+  </div>
+  <div class="w-row">
+    <button class="w-btn-ghost">↻ same as last (1 pale ale)</button>
+    <button class="w-btn-ghost">▦ scan barcode</button>
+    <button class="w-btn-ghost" data-goto="02">⌨ type it →</button>
+  </div>
+
+  <div class="w-h3">Supplements</div>
+  <div class="w-list-item"><span>Creatine 5g</span><span><button class="w-btn-ghost">✓ taken</button></span></div>
+
+  <div class="w-h3">Evening · appears after 18:00</div>
+  <div class="w-list-item" data-goto="03"><span>Close out the day — 0/8 checks</span><span>30s →</span></div>
+
+  <div class="w-h3">Today</div>
+  <div class="w-list-item"><span>21:44 · 1 pale ale <span class="w-chip">×2</span></span><span>360</span></div>
+  <div class="w-list-item"><span>20:14 · wetherspoon chicken pizza</span><span>1,080</span></div>
+  <div class="w-list-item"><span>13:32 · small bowl granola</span><span>220</span></div>
+</div>
+
+<div class="notes">— Frequents grid fed by /api/coach/food-log/frequent (exists, unused). 6 cells max; below the fold is failure.
+— Long-press a frequent = portion picker (×0.5 / ×1 / ×2). Tap stays one-shot.
+— "yesterday eve" toggle: kills the 11:00 batch-stamp pattern; entries get logged_at = yesterday 20:00, flagged backfilled.
+— Ledger collapses same-text entries ≤90s apart into ×2 chip — direct fix for the observed double-submit.
+— Supplement row is a tick, not a screen. After tap: "✓ 5g · 14:02" and it greys out.
+— Trade-off: grid pushes ledger down; accepted — input beats review on this screen.</div>
+
+<hr class="w-sep">
+<div class="state-label">state: just logged (undo window)</div>
+<div class="frame">
+  <div class="w-bar"><span><b>✓ 1 pale ale logged</b></span><span><button class="w-btn-ghost">undo · 5s</button></span></div>
+  <div class="w-placeholder">grid unchanged underneath — no navigation, no modal.
+Tap-again within undo window increments to ×2, not a duplicate row.</div>
+</div>
+
+<div class="state-label">state: offline / queued</div>
+<div class="frame">
+  <div class="w-bar"><span>Log</span><span class="w-chip">⏳ 2 queued — will sync</span></div>
+  <div class="w-placeholder">taps still work; entries queue locally (offline write queue
+is already on the mobile-shell roadmap). Never block a log on network.</div>
+</div>
+
+<div class="state-label">state: empty (new user / no history)</div>
+<div class="frame">
+  <div class="w-placeholder">No frequents yet.</div>
+  <button class="w-btn-primary" data-goto="02">Type your first item →</button>
+</div>
+
+<script src="wire-nav.js"></script>
