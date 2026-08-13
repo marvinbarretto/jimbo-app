@@ -18,9 +18,21 @@ import dev.marvinbarretto.jimbo.HealthConnectReader
 import dev.marvinbarretto.jimbo.exerciseTypeName
 import dev.marvinbarretto.jimbo.stageTypeName
 import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
 
 private const val TAG = "HealthCollector"
 private const val AGGREGATE_SOURCE = "health_connect_aggregate"
+private const val DAILY_SOURCE = "health_connect_daily"
+
+/**
+ * Start of the logical day, mirroring LOGICAL_DAY_CUTOVER_HOURS in
+ * jimbo-api's `coach-tz.ts`. Anchoring the daily totals here rather than at
+ * midnight — the way `app_usage_daily` does — is deliberate: the server buckets
+ * days on this cutover, so a midnight-anchored row would file the small hours
+ * under the wrong day.
+ */
+private const val LOGICAL_DAY_CUTOVER_HOURS = 4L
 
 private val HR_PERMISSION = HealthPermission.getReadPermission(HeartRateRecord::class)
 private val SLEEP_PERMISSION = HealthPermission.getReadPermission(SleepSessionRecord::class)
@@ -45,6 +57,7 @@ class HealthConnectCollector(
         val granted = reportMissingPermissions(client, window, events)
 
         collectAggregateMetrics(client, filter, window, events)
+        collectDailyTotals(client, window, events)
         collectFloors(client, filter, window, events)
         // Deliberately ungranted reads are skipped, not attempted: the
         // hc_diagnostic event above already documents the state, and trying
@@ -134,6 +147,75 @@ class HealthConnectCollector(
             Log.e(TAG, "Aggregate metrics failed", e)
             events += errorEvent("aggregate", e, window)
         }
+    }
+
+    /**
+     * Steps, distance and calories for the whole logical day so far — not just
+     * the sync window.
+     *
+     * The windowed rows above cannot answer "how much today": they are trailing
+     * two-hour aggregates posted every half hour, so they overlap each other and,
+     * worse, any hour the worker fails to run is never asked about again. A day
+     * that lost seven hours to doze read 2,028 steps against the phone's own
+     * 5,224 on 13 Aug 2026.
+     *
+     * A since-cutover total is immune to both problems: each post carries the
+     * entire day, so overlap is meaningless and a missed run costs nothing but
+     * freshness. Health Connect is queried for the range every time, so the
+     * figure self-heals the moment the worker runs again.
+     *
+     * The windowed rows stay — they are what intra-day shape is derived from.
+     */
+    private suspend fun collectDailyTotals(
+        client: HealthConnectClient,
+        window: TimeWindow,
+        events: MutableList<RawEvent>
+    ) {
+        val dayStart = startOfLogicalDay(window.end)
+        if (!window.end.isAfter(dayStart)) return
+
+        try {
+            val aggregate = client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(
+                        StepsRecord.COUNT_TOTAL,
+                        DistanceRecord.DISTANCE_TOTAL,
+                        androidx.health.connect.client.records.TotalCaloriesBurnedRecord.ENERGY_TOTAL
+                    ),
+                    timeRangeFilter = TimeRangeFilter.between(dayStart, window.end)
+                )
+            )
+
+            fun daily(type: String, value: Double, unit: String) {
+                events += RawEvent(
+                    collector = id,
+                    type = type,
+                    ts = dayStart,
+                    tsEnd = window.end,
+                    value = value,
+                    unit = unit,
+                    source = DAILY_SOURCE
+                )
+            }
+
+            aggregate[StepsRecord.COUNT_TOTAL]?.let { daily("steps_daily", it.toDouble(), "count") }
+            aggregate[DistanceRecord.DISTANCE_TOTAL]?.let { daily("distance_daily", it.inMeters, "meters") }
+            aggregate[androidx.health.connect.client.records.TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.let {
+                daily("calories_total_daily", it.inKilocalories, "kcal")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Daily totals failed", e)
+            events += errorEvent("daily_totals", e, window)
+        }
+    }
+
+    /** The cutover instant on or before [now], in the device's zone. */
+    private fun startOfLogicalDay(now: Instant): Instant {
+        val zone = ZoneId.systemDefault()
+        val local = now.atZone(zone)
+        val cutoverToday = local.toLocalDate().atStartOfDay(zone).plusHours(LOGICAL_DAY_CUTOVER_HOURS)
+        val start = if (local.isBefore(cutoverToday)) cutoverToday.minusDays(1) else cutoverToday
+        return start.toInstant()
     }
 
     private suspend fun collectFloors(
