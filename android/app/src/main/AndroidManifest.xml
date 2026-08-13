@@ -22,6 +22,16 @@
          is granted — Android 11+ rejects requesting both in the same call. -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Not for a collector: the hosted shell's barcode scanner calls getUserMedia,
+         and Capacitor's BridgeWebChromeClient maps the WebView's VIDEO_CAPTURE
+         request onto this permission. Undeclared, the runtime request can't even be
+         made ("No requestable permission in the request"), so it auto-denies and the
+         scanner reports the camera as unavailable. Granted on demand at the point of
+         use, so it stays out of PermissionBootstrap's startup flow. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Camera is one optional surface, not a reason to withhold the app from a
+         device that lacks one — declaring CAMERA otherwise implies required="true". -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".JimboApplication"
