@@ -1,11 +1,15 @@
 package dev.marvinbarretto.jimbo
 
+import android.content.Intent
 import android.os.Bundle
+import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import com.getcapacitor.BridgeActivity
+import com.getcapacitor.WebViewListener
 import dev.marvinbarretto.jimbo.plugins.ActivityContextPlugin
 import dev.marvinbarretto.jimbo.plugins.AuthPlugin
 import dev.marvinbarretto.jimbo.plugins.HealthSnapshotPlugin
+import dev.marvinbarretto.jimbo.plugins.NotificationTriggerPlugin
 import dev.marvinbarretto.jimbo.plugins.TelemetryPlugin
 
 class MainActivity : BridgeActivity() {
@@ -15,6 +19,9 @@ class MainActivity : BridgeActivity() {
     // or the collectors run dark. HomeActivity shares the same bootstrap.
     private val permissions = PermissionBootstrap(this)
 
+    // /m/<tab> path from a tapped notification, held until the shell has loaded.
+    private var pendingPath: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // All plugins must be registered before super.onCreate() so they're
         // available when the WebView loads and JS calls Capacitor.Plugins.<Name>.
@@ -22,6 +29,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(ActivityContextPlugin::class.java)
         registerPlugin(HealthSnapshotPlugin::class.java)
         registerPlugin(AuthPlugin::class.java)
+        registerPlugin(NotificationTriggerPlugin::class.java)
         super.onCreate(savedInstanceState)
 
         BridgeRegistry.getInstance(this).apply {
@@ -29,11 +37,48 @@ class MainActivity : BridgeActivity() {
             registerCapability("activityContext", 1)
             registerCapability("healthSnapshot", 1)
             registerCapability("auth", 1)
+            registerCapability("notification", 1)
             attachToBridge(bridge)
         }
 
         registerBackNavigation()
+        registerNotificationDeepLink()
+        handleNotificationIntent(intent)
         permissions.requestIfNeeded()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    /**
+     * Opens `/m/<tab>` when the activity was launched by a notification tap.
+     * Cold start: the shell isn't loaded yet, so the path waits for onPageLoaded.
+     * Warm: the shell is up, so navigate straight away. The path is relative, so
+     * it resolves against whichever origin the WebView loaded.
+     */
+    private fun handleNotificationIntent(intent: Intent?) {
+        val tab = intent?.getStringExtra(NotificationTriggerReceiver.EXTRA_TAB) ?: return
+        intent.removeExtra(NotificationTriggerReceiver.EXTRA_TAB)
+        if (!Regex("[a-z0-9-]+").matches(tab)) return
+        val path = "/m/$tab"
+        val webView = bridge?.webView
+        if (webView != null && webView.url?.contains("/m") == true) {
+            webView.evaluateJavascript("window.location.assign('$path')", null)
+        } else {
+            pendingPath = path
+        }
+    }
+
+    private fun registerNotificationDeepLink() {
+        bridge.addWebViewListener(object : WebViewListener() {
+            override fun onPageLoaded(webView: WebView) {
+                val path = pendingPath ?: return
+                pendingPath = null
+                webView.evaluateJavascript("window.location.assign('$path')", null)
+            }
+        })
     }
 
     /**

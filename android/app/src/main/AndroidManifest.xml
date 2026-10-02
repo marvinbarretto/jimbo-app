@@ -22,6 +22,7 @@
          is granted — Android 11+ rejects requesting both in the same call. -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Not for a collector: the hosted shell's barcode scanner calls getUserMedia,
          and Capacitor's BridgeWebChromeClient maps the WebView's VIDEO_CAPTURE
          request onto this permission. Undeclared, the runtime request can't even be
@@ -89,6 +90,10 @@
 
         <receiver
             android:name=".LocationUpdateReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".NotificationTriggerReceiver"
             android:exported="false" />
 
         <service
