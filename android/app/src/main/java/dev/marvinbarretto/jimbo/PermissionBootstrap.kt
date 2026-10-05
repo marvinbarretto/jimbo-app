@@ -11,7 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 /**
- * Startup permission flow (Health Connect + activity recognition + location,
+ * Startup permission flow (Health Connect + activity recognition + location + notifications,
  * incl. the two-step background-location dance), shared by whichever activity
  * is the launcher. Lived inline in HomeActivity until MainActivity took over
  * as launcher — the WebView shell must run the same bootstrap or a fresh
@@ -71,6 +71,7 @@ class PermissionBootstrap(private val activity: ComponentActivity) {
         val missing = buildList {
             if (!hasActivityRecognition()) add(Manifest.permission.ACTIVITY_RECOGNITION)
             if (!hasFineLocation()) add(Manifest.permission.ACCESS_FINE_LOCATION)
+            if (!hasPostNotifications()) add(Manifest.permission.POST_NOTIFICATIONS)
         }
         if (missing.isNotEmpty()) {
             requestRuntimePermissions.launch(missing.toTypedArray())
@@ -80,6 +81,8 @@ class PermissionBootstrap(private val activity: ComponentActivity) {
     }
 
     private fun hasActivityRecognition() = hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)
+    // Runtime-gated from Android 13; minSdk is above that, so always requestable.
+    private fun hasPostNotifications() = hasPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun hasFineLocation() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
     private fun hasBackgroundLocation() = hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
     private fun hasPermission(p: String) =

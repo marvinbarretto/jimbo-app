@@ -159,6 +159,8 @@ interface NotificationTriggerPlugin {
 
 **Why:** Focus session "done" alert when app is backgrounded, morning briefing reminder.
 
+**Status:** built, registered as `notification@1`. `schedule` also takes an optional `tab` (opened as `/m/<tab>` on tap, default `today`) and `channelId` is one of `briefing` | `nudges` | `gym`. Alarms are inexact and do not survive a reboot. `sendTestNotification()` in `plugins/notification-trigger` fires one now.
+
 ---
 
 ## Versioning
