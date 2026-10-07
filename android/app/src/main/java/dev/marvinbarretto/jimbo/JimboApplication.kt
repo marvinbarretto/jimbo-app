@@ -1,6 +1,7 @@
 package dev.marvinbarretto.jimbo
 
 import android.Manifest
+import dev.marvinbarretto.jimbo.place.PlaceGeofenceManager
 import android.app.Application
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -22,6 +23,7 @@ class JimboApplication : Application() {
         if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
             hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
             JimboLocationManager.register(this)
+            PlaceGeofenceManager.register(this)
         }
     }
 

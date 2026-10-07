@@ -27,6 +27,9 @@ android {
         buildConfigField "String", "JIMBO_API_URL", "\"${localProps.getProperty('jimbo.api.url', '')}\""
         buildConfigField "String", "JIMBO_API_KEY", "\"${localProps.getProperty('jimbo.api.key', '')}\""
         buildConfigField "String", "JIMBO_DEVICE_ID", "\"${localProps.getProperty('jimbo.device.id', 'pixel-marvin')}\""
+        // Geofenced places as "lat,lng[,radiusMetres]". Blank = not fenced.
+        buildConfigField "String", "JIMBO_PLACE_HOME", "\"${localProps.getProperty('jimbo.place.home', '')}\""
+        buildConfigField "String", "JIMBO_PLACE_GYM", "\"${localProps.getProperty('jimbo.place.gym', '')}\""
         // LocalShout screen-capture ingest. Blank by default: ScreenSyncWorker
         // no-ops when unset, so a build without these still runs — it just never
         // sends. Set localshout.ingest.url / localshout.screen.key to enable.
