@@ -4,11 +4,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.getcapacitor.BridgeActivity
 import com.getcapacitor.WebViewListener
 import dev.marvinbarretto.jimbo.plugins.ActivityContextPlugin
 import dev.marvinbarretto.jimbo.plugins.AuthPlugin
+import dev.marvinbarretto.jimbo.place.GeofenceReceiver
+import dev.marvinbarretto.jimbo.place.GymSessionState
 import dev.marvinbarretto.jimbo.plugins.HealthSnapshotPlugin
+import dev.marvinbarretto.jimbo.plugins.LocationContextPlugin
 import dev.marvinbarretto.jimbo.plugins.NotificationTriggerPlugin
 import dev.marvinbarretto.jimbo.plugins.TelemetryPlugin
 
@@ -30,6 +37,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(HealthSnapshotPlugin::class.java)
         registerPlugin(AuthPlugin::class.java)
         registerPlugin(NotificationTriggerPlugin::class.java)
+        registerPlugin(LocationContextPlugin::class.java)
         super.onCreate(savedInstanceState)
 
         BridgeRegistry.getInstance(this).apply {
@@ -38,6 +46,7 @@ class MainActivity : BridgeActivity() {
             registerCapability("healthSnapshot", 1)
             registerCapability("auth", 1)
             registerCapability("notification", 1)
+            registerCapability("locationContext", 1)
             attachToBridge(bridge)
         }
 
@@ -63,6 +72,20 @@ class MainActivity : BridgeActivity() {
         intent.removeExtra(NotificationTriggerReceiver.EXTRA_TAB)
         if (!Regex("[a-z0-9-]+").matches(tab)) return
         val path = "/m/$tab"
+        // The gym-arrival notification asks; this tap is the commit. Start the
+        // session first so /m/train opens onto it.
+        if (intent.getBooleanExtra(GeofenceReceiver.EXTRA_START_SESSION, false)) {
+            intent.removeExtra(GeofenceReceiver.EXTRA_START_SESSION)
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { runCatching { GymSessionState.startIfNone() } }
+                navigateTo(path)
+            }
+            return
+        }
+        navigateTo(path)
+    }
+
+    private fun navigateTo(path: String) {
         val webView = bridge?.webView
         if (webView != null && webView.url?.contains("/m") == true) {
             webView.evaluateJavascript("window.location.assign('$path')", null)

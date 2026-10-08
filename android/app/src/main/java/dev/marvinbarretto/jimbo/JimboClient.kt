@@ -39,6 +39,8 @@ object JimboClient {
     fun patchGymSession(sessionId: String, jsonBody: String): Pair<Int, String> =
         sendJson("PATCH", "/api/gym/sessions/$sessionId", jsonBody)
 
+    fun getJson(path: String): Pair<Int, String> = sendJson("GET", path, null)
+
     /**
      * BuildConfig.JIMBO_API_URL and JIMBO_API_KEY are injected at build time
      * from local.properties via build.gradle.kts — similar to .env vars in JS.
@@ -46,9 +48,9 @@ object JimboClient {
     private fun postJson(path: String, jsonBody: String): Pair<Int, String> =
         sendJson("POST", path, jsonBody)
 
-    private fun sendJson(method: String, path: String, jsonBody: String): Pair<Int, String> {
+    private fun sendJson(method: String, path: String, jsonBody: String?): Pair<Int, String> {
         val endpoint = "${BuildConfig.JIMBO_API_URL}$path"
-        android.util.Log.d("JimboSync", "$method $endpoint (${jsonBody.length} bytes)")
+        android.util.Log.d("JimboSync", "$method $endpoint (${jsonBody?.length ?: 0} bytes)")
         val url = URL(endpoint)
 
         val conn = (url.openConnection() as HttpsURLConnection).apply {
@@ -59,12 +61,12 @@ object JimboClient {
             requestMethod = method
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("X-API-Key", BuildConfig.JIMBO_API_KEY)
-            doOutput = true
+            doOutput = jsonBody != null
             connectTimeout = 15_000
             readTimeout = 30_000
         }
 
-        OutputStreamWriter(conn.outputStream).use { it.write(jsonBody) }
+        if (jsonBody != null) OutputStreamWriter(conn.outputStream).use { it.write(jsonBody) }
 
         val code = conn.responseCode
         val body = (if (code in 200..299) conn.inputStream else conn.errorStream)

@@ -93,6 +93,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".place.GeofenceReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".NotificationTriggerReceiver"
             android:exported="false" />
 
