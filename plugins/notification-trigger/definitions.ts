@@ -4,15 +4,18 @@
  * Plumbing only: lets the hosted shell ask Android to post a notification at a
  * given time. Consumers (briefing, nudges, gym) decide what to say and when.
  *
+ * The `focus` channel (v2) is high-importance and vibrates, so a finished focus
+ * block is felt even with the phone face-down.
+ *
  * Channels are created natively so Android's per-channel mute is the user's
  * frequency control. Tapping a notification opens the shell at `/m/<tab>`.
  *
  * Alarms are inexact (setAndAllowWhileIdle) and do not survive a reboot.
  */
 
-export const NOTIFICATION_VERSION = 1;
+export const NOTIFICATION_VERSION = 2;
 
-export type NotificationChannelId = 'briefing' | 'nudges' | 'gym';
+export type NotificationChannelId = 'briefing' | 'nudges' | 'gym' | 'focus';
 
 export interface ScheduleNotificationOptions {
   /** Caller-chosen id. Scheduling the same id again replaces the earlier one. */
