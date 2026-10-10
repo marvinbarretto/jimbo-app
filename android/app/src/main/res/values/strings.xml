@@ -7,4 +7,8 @@
     <string name="instagram_screen_service_label">Instagram screen capture</string>
     <string name="instagram_screen_service_summary">Reads event listings off Instagram as you browse it</string>
     <string name="instagram_screen_service_description">Watches Instagram — and only Instagram — while you use it normally, so gig and event listings you scroll past can be picked up automatically. It never scrolls or taps for you, and no other app is visible to it.</string>
+    <string name="widget_macros_label">Macros today</string>
+    <string name="widget_macros_description">Today\'s calories and protein against target, with a quick-add button</string>
+    <string name="widget_priority_label">Top priority</string>
+    <string name="widget_priority_description">The briefing\'s top priority for today</string>
 </resources>

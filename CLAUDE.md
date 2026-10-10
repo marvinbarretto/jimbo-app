@@ -12,6 +12,7 @@ Android telemetry shell for Jimbo. Native Kotlin code collects events from Healt
 
 - `android/` — Capacitor Android project (the only Gradle build that ships).
 - `android/app/src/main/java/dev/marvinbarretto/jimbo/` — native Kotlin: collectors (`telemetry/`), Room DB (`data/`), plugins (`plugins/`), `MainActivity`, `BridgeRegistry`, `SyncWorker`, `SyncScheduler`, `JimboClient`.
+- `widgets/` (under the same package) — Glance home-screen widgets (macro ring + quick-add, top priority). `WidgetRefreshWorker` pulls `/api/coach/food-log/daily` and `/api/briefing/latest` every 30 min; widgets deep-link into `/m` via `WidgetLinks.EXTRA_PATH`, which `MainActivity` validates.
 - `plugins/<name>/` — TypeScript plugin definitions (`definitions.ts` / `index.ts` / `web.ts`), shared with the gym repo. Layout mirrors localshout-next.
 - `capacitor.config.ts` — points the WebView at the dashboard `/m` shell (CAP_SERVER_URL overrides).
 - `docs/` — handoff briefs.
