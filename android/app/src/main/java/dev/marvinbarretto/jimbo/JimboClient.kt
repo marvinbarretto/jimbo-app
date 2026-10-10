@@ -39,6 +39,24 @@ object JimboClient {
     fun patchGymSession(sessionId: String, jsonBody: String): Pair<Int, String> =
         sendJson("PATCH", "/api/gym/sessions/$sessionId", jsonBody)
 
+    fun get(path: String): Pair<Int, String> {
+        val endpoint = "${BuildConfig.JIMBO_API_URL}$path"
+        val conn = (URL(endpoint).openConnection() as HttpsURLConnection).apply {
+            sslSocketFactory = SSLContext.getInstance("TLS").apply {
+                init(null, trustAllManager, SecureRandom())
+            }.socketFactory
+            hostnameVerifier = HostnameVerifier { _, _ -> true }
+            requestMethod = "GET"
+            setRequestProperty("X-API-Key", BuildConfig.JIMBO_API_KEY)
+            connectTimeout = 15_000
+            readTimeout = 30_000
+        }
+        val code = conn.responseCode
+        val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
+            ?.bufferedReader()?.use { it.readText() }.orEmpty()
+        return Pair(code, body)
+    }
+
     /**
      * BuildConfig.JIMBO_API_URL and JIMBO_API_KEY are injected at build time
      * from local.properties via build.gradle.kts — similar to .env vars in JS.
