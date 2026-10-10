@@ -1,0 +1,45 @@
+name: Verify
+
+# The file Jimbo's auto-merge requires green on an agent PR's head before it
+# may merge it (jimbo-api JIM-7038; jimbo ADR-0101). Until this existed, agent
+# PRs here held as no_verify_workflow and nothing built them at all.
+#
+# Public repo, so hosted runner minutes are free. No paths-ignore: a required
+# workflow that does not run leaves the PR waiting for a result that never comes.
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # android/ builds against node_modules/@capacitor/android, and
+      # capacitor-cordova-android-plugins/ is generated (gitignored), so sync
+      # before Gradle can configure the project.
+      - run: npm ci
+      - run: npx cap sync android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      # Unit tests compile the whole app, so a broken build fails here too.
+      # local.properties is not committed; the build falls back to empty values.
+      - name: Unit tests
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --no-daemon
