@@ -28,8 +28,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # android/ builds against node_modules/@capacitor/android.
+      # android/ builds against node_modules/@capacitor/android, and
+      # capacitor-cordova-android-plugins/ is generated (gitignored), so sync
+      # before Gradle can configure the project.
       - run: npm ci
+      - run: npx cap sync android
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
