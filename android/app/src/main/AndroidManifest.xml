@@ -138,6 +138,30 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <receiver
+            android:name=".widgets.MacroWidgetReceiver"
+            android:label="@string/widget_macros_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/macro_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.PriorityWidgetReceiver"
+            android:label="@string/widget_priority_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/priority_widget_info" />
+        </receiver>
+
         <service
             android:name=".NotificationCollectorService"
             android:exported="true"

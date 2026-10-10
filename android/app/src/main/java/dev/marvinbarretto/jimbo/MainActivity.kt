@@ -21,6 +21,7 @@ import dev.marvinbarretto.jimbo.plugins.NotificationTriggerPlugin
 import dev.marvinbarretto.jimbo.plugins.TelemetryPlugin
 import dev.marvinbarretto.jimbo.plugins.UsageSlicePlugin
 import dev.marvinbarretto.jimbo.walk.WalkNotifications
+import dev.marvinbarretto.jimbo.widgets.WidgetLinks
 
 class MainActivity : BridgeActivity() {
 
@@ -71,16 +72,23 @@ class MainActivity : BridgeActivity() {
     }
 
     /**
-     * Opens `/m/<tab>` when the activity was launched by a notification tap.
+     * Opens `/m/<tab>` when the activity was launched by a notification or widget tap.
      * Cold start: the shell isn't loaded yet, so the path waits for onPageLoaded.
      * Warm: the shell is up, so navigate straight away. The path is relative, so
      * it resolves against whichever origin the WebView loaded.
      */
     private fun handleNotificationIntent(intent: Intent?) {
-        val tab = intent?.getStringExtra(NotificationTriggerReceiver.EXTRA_TAB) ?: return
+        val widgetPath = intent?.getStringExtra(WidgetLinks.EXTRA_PATH)
+        val tab = intent?.getStringExtra(NotificationTriggerReceiver.EXTRA_TAB)
+        if (widgetPath == null && tab == null) return
+        intent.removeExtra(WidgetLinks.EXTRA_PATH)
         intent.removeExtra(NotificationTriggerReceiver.EXTRA_TAB)
-        if (!Regex("[a-z0-9-]+").matches(tab)) return
-        val path = "/m/$tab"
+        val path = when {
+            // Home-screen widgets (widgets/) send a full /m path.
+            widgetPath != null -> WidgetLinks.sanitize(widgetPath)
+            Regex("[a-z0-9-]+").matches(tab!!) -> "/m/$tab"
+            else -> null
+        } ?: return
         // The gym-arrival notification asks; this tap is the commit. Start the
         // session first so /m/train opens onto it.
         if (intent.getBooleanExtra(GeofenceReceiver.EXTRA_START_SESSION, false)) {
