@@ -12,6 +12,7 @@ class JimboApplication : Application() {
 
         // WorkManager is idempotent under UPDATE policy — safe to call on every launch.
         SyncScheduler.schedulePeriodic(this)
+        dev.marvinbarretto.jimbo.nudge.NudgeWorker.schedule(this)
 
         // Play Services activity recognition + location registrations don't survive
         // process death. Re-register on every cold start if permissions are already granted.
