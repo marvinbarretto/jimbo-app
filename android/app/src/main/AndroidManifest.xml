@@ -101,6 +101,10 @@
             android:name=".DoNotDisturbRestoreReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".nudge.FoodReplyReceiver"
+            android:exported="false" />
+
         <service
             android:name=".NotificationCollectorService"
             android:exported="true"

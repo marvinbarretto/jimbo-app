@@ -17,7 +17,7 @@ import javax.net.ssl.X509TrustManager
  * self-signed certificate on the VPS. This is acceptable for a
  * personal single-user app — never do this in production.
  */
-object JimboClient {
+object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
 
     // Accept any TLS certificate without verification.
     // Normally Android rejects self-signed certs — this bypasses that.
@@ -29,6 +29,13 @@ object JimboClient {
 
     fun postTelemetryEvents(jsonBody: String): Pair<Int, String> =
         postJson("/api/telemetry/events", jsonBody)
+
+    override fun postFoodLog(jsonBody: String): Pair<Int, String> =
+        postJson("/api/coach/food-log", jsonBody)
+
+    /** [query] is a raw query string, e.g. `days=2&limit=1`. */
+    fun getFoodLog(query: String): Pair<Int, String> =
+        sendJson("GET", "/api/coach/food-log?$query", null)
 
     fun postGymSession(jsonBody: String): Pair<Int, String> =
         postJson("/api/gym/sessions", jsonBody)
@@ -46,9 +53,9 @@ object JimboClient {
     private fun postJson(path: String, jsonBody: String): Pair<Int, String> =
         sendJson("POST", path, jsonBody)
 
-    private fun sendJson(method: String, path: String, jsonBody: String): Pair<Int, String> {
+    private fun sendJson(method: String, path: String, jsonBody: String?): Pair<Int, String> {
         val endpoint = "${BuildConfig.JIMBO_API_URL}$path"
-        android.util.Log.d("JimboSync", "$method $endpoint (${jsonBody.length} bytes)")
+        android.util.Log.d("JimboSync", "$method $endpoint (${jsonBody?.length ?: 0} bytes)")
         val url = URL(endpoint)
 
         val conn = (url.openConnection() as HttpsURLConnection).apply {
@@ -59,12 +66,12 @@ object JimboClient {
             requestMethod = method
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("X-API-Key", BuildConfig.JIMBO_API_KEY)
-            doOutput = true
+            doOutput = jsonBody != null
             connectTimeout = 15_000
             readTimeout = 30_000
         }
 
-        OutputStreamWriter(conn.outputStream).use { it.write(jsonBody) }
+        if (jsonBody != null) OutputStreamWriter(conn.outputStream).use { it.write(jsonBody) }
 
         val code = conn.responseCode
         val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
