@@ -45,8 +45,10 @@ object DoNotDisturbController {
     }
 
     private fun scheduleRestore(context: Context, atMillis: Long) {
+        // getBroadcast only returns null with FLAG_NO_CREATE; the guard satisfies the nullable type.
+        val pending = restoreIntent(context, PendingIntent.FLAG_UPDATE_CURRENT) ?: return
         context.getSystemService(AlarmManager::class.java)
-            .setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, restoreIntent(context, PendingIntent.FLAG_UPDATE_CURRENT))
+            .setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pending)
     }
 
     private fun cancelRestore(context: Context) {
