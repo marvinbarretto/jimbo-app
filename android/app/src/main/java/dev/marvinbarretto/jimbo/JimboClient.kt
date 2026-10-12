@@ -2,30 +2,18 @@ package dev.marvinbarretto.jimbo
 
 import java.io.OutputStreamWriter
 import java.net.URL
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
-import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 /**
  * HTTP client that POSTs telemetry data to the Jimbo API.
  *
- * Uses a trust-all TLS configuration because Jimbo runs behind a
- * self-signed certificate on the VPS. This is acceptable for a
- * personal single-user app — never do this in production.
+ * TLS is checked the normal way. Until 2026-10-13 this accepted any
+ * certificate and any hostname, left over from a self-signed VPS cert; the API
+ * now sits behind a real certificate (jimbo.fourfoldmedia.uk), and
+ * TlsVerificationTest keeps verification switched on.
  */
 object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
 
-    // Accept any TLS certificate without verification.
-    // Normally Android rejects self-signed certs — this bypasses that.
-    private val trustAllManager = arrayOf<TrustManager>(object : X509TrustManager {
-        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-    })
 
     fun postTelemetryEvents(jsonBody: String): Pair<Int, String> =
         postJson("/api/telemetry/events", jsonBody)
@@ -49,8 +37,9 @@ object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
     fun getJson(path: String): Pair<Int, String> = sendJson("GET", path, null)
 
     /**
-     * BuildConfig.JIMBO_API_URL and JIMBO_API_KEY are injected at build time
-     * from local.properties via build.gradle.kts — similar to .env vars in JS.
+     * BuildConfig.JIMBO_API_URL comes from local.properties and JIMBO_API_KEY
+     * from the environment at build time: `scripts/install-phone.sh` runs the
+     * build under `op run`, so the key's only home is 1Password (Fleet/phone).
      */
     private fun postJson(path: String, jsonBody: String): Pair<Int, String> =
         sendJson("POST", path, jsonBody)
@@ -61,10 +50,6 @@ object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
         val url = URL(endpoint)
 
         val conn = (url.openConnection() as HttpsURLConnection).apply {
-            sslSocketFactory = SSLContext.getInstance("TLS").apply {
-                init(null, trustAllManager, SecureRandom())
-            }.socketFactory
-            hostnameVerifier = HostnameVerifier { _, _ -> true }
             requestMethod = method
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("X-API-Key", BuildConfig.JIMBO_API_KEY)

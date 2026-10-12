@@ -25,7 +25,10 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
         buildConfigField "String", "JIMBO_API_URL", "\"${localProps.getProperty('jimbo.api.url', '')}\""
-        buildConfigField "String", "JIMBO_API_KEY", "\"${localProps.getProperty('jimbo.api.key', '')}\""
+        // The phone's own key (JIMBO_API_KEY_PHONE on the API), from 1Password via
+        // `op run` in scripts/install-phone.sh. Never local.properties: the key
+        // that lived there was the retired shared key (401s from 2026-10-10).
+        buildConfigField "String", "JIMBO_API_KEY", "\"${System.getenv('JIMBO_API_KEY') ?: ''}\""
         buildConfigField "String", "JIMBO_DEVICE_ID", "\"${localProps.getProperty('jimbo.device.id', 'pixel-marvin')}\""
         // Geofenced places as "lat,lng[,radiusMetres]". Blank = not fenced.
         buildConfigField "String", "JIMBO_PLACE_HOME", "\"${localProps.getProperty('jimbo.place.home', '')}\""
