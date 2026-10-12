@@ -7,8 +7,6 @@ import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.request.AggregateRequest
@@ -16,7 +14,6 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dev.marvinbarretto.jimbo.HealthConnectReader
 import dev.marvinbarretto.jimbo.exerciseTypeName
-import dev.marvinbarretto.jimbo.stageTypeName
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -33,9 +30,6 @@ private const val DAILY_SOURCE = "health_connect_daily"
  * under the wrong day.
  */
 private const val LOGICAL_DAY_CUTOVER_HOURS = 4L
-
-private val HR_PERMISSION = HealthPermission.getReadPermission(HeartRateRecord::class)
-private val SLEEP_PERMISSION = HealthPermission.getReadPermission(SleepSessionRecord::class)
 
 class HealthConnectCollector(
     private val context: Context
@@ -54,23 +48,12 @@ class HealthConnectCollector(
         // missing steps while every other collector flowed) undiagnosable.
         // Missing permissions and read errors now ship as events themselves,
         // so the DB can always answer "why is HC quiet here?".
-        val granted = reportMissingPermissions(client, window, events)
+        reportMissingPermissions(client, window, events)
 
         collectAggregateMetrics(client, filter, window, events)
         collectDailyTotals(client, window, events)
         collectFloors(client, filter, window, events)
-        // Deliberately ungranted reads are skipped, not attempted: the
-        // hc_diagnostic event above already documents the state, and trying
-        // anyway would emit an hc_error per sync forever (~48/day of noise).
-        // `granted == null` means the probe itself failed — attempt the read
-        // so a broken probe can't silently disable collection.
-        if (granted == null || HR_PERMISSION in granted) {
-            collectHeartRate(client, filter, window, events)
-        }
         collectExerciseSessions(client, filter, window, events)
-        if (granted == null || SLEEP_PERMISSION in granted) {
-            collectSleepSessions(client, filter, window, events)
-        }
 
         Log.d(TAG, "Collected ${events.size} Health Connect events")
         return events
@@ -244,46 +227,6 @@ class HealthConnectCollector(
         }
     }
 
-    private suspend fun collectHeartRate(
-        client: HealthConnectClient,
-        filter: TimeRangeFilter,
-        window: TimeWindow,
-        events: MutableList<RawEvent>
-    ) {
-        try {
-            val aggregate = client.aggregate(
-                AggregateRequest(
-                    metrics = setOf(
-                        HeartRateRecord.BPM_MIN,
-                        HeartRateRecord.BPM_AVG,
-                        HeartRateRecord.BPM_MAX
-                    ),
-                    timeRangeFilter = filter
-                )
-            )
-            val min = aggregate[HeartRateRecord.BPM_MIN]?.toDouble()
-            val avg = aggregate[HeartRateRecord.BPM_AVG]?.toDouble()
-            val max = aggregate[HeartRateRecord.BPM_MAX]?.toDouble()
-            if (min != null || avg != null || max != null) {
-                events += RawEvent(
-                    collector = id,
-                    type = "heart_rate_summary",
-                    ts = window.start,
-                    tsEnd = window.end,
-                    source = AGGREGATE_SOURCE,
-                    payload = mapOf(
-                        "min" to min,
-                        "avg" to avg,
-                        "max" to max
-                    )
-                )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Heart rate collection failed", e)
-            events += errorEvent("heart_rate", e, window)
-        }
-    }
-
     private suspend fun collectExerciseSessions(
         client: HealthConnectClient,
         filter: TimeRangeFilter,
@@ -309,42 +252,6 @@ class HealthConnectCollector(
         } catch (e: Exception) {
             Log.e(TAG, "Exercise session collection failed", e)
             events += errorEvent("exercise_sessions", e, window)
-        }
-    }
-
-    private suspend fun collectSleepSessions(
-        client: HealthConnectClient,
-        filter: TimeRangeFilter,
-        window: TimeWindow,
-        events: MutableList<RawEvent>
-    ) {
-        try {
-            client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, filter)).records.forEach { record ->
-                events += RawEvent(
-                    collector = id,
-                    type = "sleep_session",
-                    ts = record.startTime,
-                    tsEnd = record.endTime,
-                    value = Duration.between(record.startTime, record.endTime).toMinutes().toDouble(),
-                    unit = "duration_min",
-                    source = record.metadata.dataOrigin.packageName,
-                    payload = mapOf(
-                        "title" to record.title?.toString(),
-                        "hc_uid" to record.metadata.id,
-                        "stages" to record.stages.map { stage ->
-                            mapOf(
-                                "stage_type" to stageTypeName(stage.stage),
-                                "start_time" to stage.startTime.toString(),
-                                "end_time" to stage.endTime.toString(),
-                                "duration_min" to Duration.between(stage.startTime, stage.endTime).toMinutes().toDouble()
-                            )
-                        }
-                    )
-                )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Sleep session collection failed", e)
-            events += errorEvent("sleep_sessions", e, window)
         }
     }
 
