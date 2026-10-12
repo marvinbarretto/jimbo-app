@@ -14,6 +14,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LIVE=false
 [ "${1:-}" = "--live" ] && LIVE=true
 
+# Regenerate the bundled capacitor.config.json from capacitor.config.ts, so
+# settings such as loggingBehavior reach the APK.
+(cd "$ROOT" && npx cap copy android)
 cd "$ROOT/android"
 op run --env-file="$ROOT/android/phone.env" -- ./gradlew assembleDebug
 APK="$ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
