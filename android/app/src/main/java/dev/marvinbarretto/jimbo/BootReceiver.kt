@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.content.ContextCompat
+import dev.marvinbarretto.jimbo.place.PlaceGeofenceManager
 
 private const val TAG = "JimboSync"
 
@@ -36,6 +37,7 @@ class BootReceiver : BroadcastReceiver() {
             hasPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         ) {
             JimboLocationManager.register(context)
+            PlaceGeofenceManager.register(context)
         }
     }
 

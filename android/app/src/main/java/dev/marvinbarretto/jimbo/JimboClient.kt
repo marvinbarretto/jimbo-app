@@ -46,6 +46,8 @@ object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
     fun patchGymSession(sessionId: String, jsonBody: String): Pair<Int, String> =
         sendJson("PATCH", "/api/gym/sessions/$sessionId", jsonBody)
 
+    fun getJson(path: String): Pair<Int, String> = sendJson("GET", path, null)
+
     /**
      * BuildConfig.JIMBO_API_URL and JIMBO_API_KEY are injected at build time
      * from local.properties via build.gradle.kts — similar to .env vars in JS.
