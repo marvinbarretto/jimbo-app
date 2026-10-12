@@ -32,16 +32,18 @@ Defaults to off in `collector_settings`; enable as each grant lands.
 
    ```properties
    jimbo.api.url=https://your-jimbo-api
-   jimbo.api.key=your-api-key
    jimbo.device.id=this-phone-id     # optional, defaults to pixel-marvin
    ```
 
 2. Build and install:
 
    ```bash
-   cd android && ./gradlew assembleDebug
-   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   scripts/install-phone.sh --live
    ```
+
+   The API key is not in local.properties. It lives in 1Password at
+   `op://Fleet/phone/jimbo_key` (`JIMBO_API_KEY_PHONE` on the API), and the
+   script runs the gradle build under `op run --env-file=android/phone.env`.
 
 3. Launch the app. Capacitor loads the dashboard `/m` shell in the WebView; native auto-requests Health Connect + Activity Recognition + Location on first launch. Usage Stats and Notification Listener need a trip through system Settings.
 

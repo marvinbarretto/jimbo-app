@@ -23,6 +23,10 @@ const config: CapacitorConfig = {
   appId: 'dev.marvinbarretto.jimbo',
   appName: 'Jimbo',
   webDir: 'public',
+  // Capacitor logs every native plugin result to logcat in debug builds, and
+  // the Auth plugin's result is the API key: on 2026-10-13 that leaked the
+  // phone key through an adb log read and it was rotated. CapacitorLoggingTest.
+  loggingBehavior: 'none',
   server: {
     url: serverUrl,
     cleartext: serverUrl.startsWith('http://'),
