@@ -62,6 +62,10 @@ data class SleepSessionSummary(
 
 object HealthConnectReader {
 
+    // Sleep and heart rate are not listed: the manifest declares neither, so
+    // Health Connect shows no toggle and the grant is impossible. With a
+    // wearable, add READ_SLEEP / READ_HEART_RATE to the manifest AND the
+    // records back here; HealthPermissionsManifestTest keeps the two in step.
     val PERMISSIONS = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(DistanceRecord::class),
@@ -70,8 +74,6 @@ object HealthConnectReader {
         HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         HealthPermission.getReadPermission(FloorsClimbedRecord::class),
         HealthPermission.getReadPermission(ElevationGainedRecord::class),
-        HealthPermission.getReadPermission(SleepSessionRecord::class),
-        HealthPermission.getReadPermission(HeartRateRecord::class),
         // Declared in the manifest since day one but never REQUESTED, so it
         // was never granted — background syncs threw SecurityException and
         // HC capture silently only worked while the app was recently
