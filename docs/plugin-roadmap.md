@@ -112,7 +112,7 @@ Named place from geofence rather than raw coordinates — safe to expose to PWA 
 ```ts
 interface LocationContextPlugin {
   getCurrentPlace(): Promise<{
-    place: 'home' | 'work' | 'gym' | 'commuting' | 'unknown';
+    place: 'home' | 'gym' | 'other';
     since: number | null;
   }>;
 }
@@ -120,7 +120,7 @@ interface LocationContextPlugin {
 
 **Why:** Adaptive home screen ("you're at the gym"), briefing context, location-aware task suggestions.
 
-Requires defining geofences — initial set: home, work, gym. Configurable later.
+Built (capability `locationContext` v1). Geofences are defined in code/config: home and gym, from `jimbo.place.home` / `jimbo.place.gym` in `local.properties` (`lat,lng[,radiusMetres]`). Gym entry with no active or just-finished session posts a gym-channel notification; the tap starts a session and opens `/m/train`. Work and commuting are not built.
 
 ---
 

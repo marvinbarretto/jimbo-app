@@ -8,6 +8,7 @@ import androidx.core.content.ContextCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
+import dev.marvinbarretto.jimbo.place.PlaceGeofenceManager
 import kotlinx.coroutines.launch
 
 /**
@@ -40,6 +41,7 @@ class PermissionBootstrap(private val activity: ComponentActivity) {
             requestBackgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         } else if (hasFineLocation() && hasBackgroundLocation()) {
             JimboLocationManager.register(activity)
+            PlaceGeofenceManager.register(activity)
         }
     }
 
@@ -48,6 +50,7 @@ class PermissionBootstrap(private val activity: ComponentActivity) {
     ) { granted ->
         if (granted && hasFineLocation()) {
             JimboLocationManager.register(activity)
+            PlaceGeofenceManager.register(activity)
         }
     }
 
