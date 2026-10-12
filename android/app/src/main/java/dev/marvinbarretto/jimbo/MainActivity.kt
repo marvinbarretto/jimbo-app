@@ -14,10 +14,12 @@ import dev.marvinbarretto.jimbo.plugins.ActivityContextPlugin
 import dev.marvinbarretto.jimbo.plugins.AuthPlugin
 import dev.marvinbarretto.jimbo.place.GeofenceReceiver
 import dev.marvinbarretto.jimbo.place.GymSessionState
+import dev.marvinbarretto.jimbo.plugins.DoNotDisturbPlugin
 import dev.marvinbarretto.jimbo.plugins.HealthSnapshotPlugin
 import dev.marvinbarretto.jimbo.plugins.LocationContextPlugin
 import dev.marvinbarretto.jimbo.plugins.NotificationTriggerPlugin
 import dev.marvinbarretto.jimbo.plugins.TelemetryPlugin
+import dev.marvinbarretto.jimbo.plugins.UsageSlicePlugin
 
 class MainActivity : BridgeActivity() {
 
@@ -37,6 +39,8 @@ class MainActivity : BridgeActivity() {
         registerPlugin(HealthSnapshotPlugin::class.java)
         registerPlugin(AuthPlugin::class.java)
         registerPlugin(NotificationTriggerPlugin::class.java)
+        registerPlugin(DoNotDisturbPlugin::class.java)
+        registerPlugin(UsageSlicePlugin::class.java)
         registerPlugin(LocationContextPlugin::class.java)
         super.onCreate(savedInstanceState)
 
@@ -45,7 +49,9 @@ class MainActivity : BridgeActivity() {
             registerCapability("activityContext", 1)
             registerCapability("healthSnapshot", 1)
             registerCapability("auth", 1)
-            registerCapability("notification", 1)
+            registerCapability("notification", 2)
+            registerCapability("doNotDisturb", 1)
+            registerCapability("usageSlice", 1)
             registerCapability("locationContext", 1)
             attachToBridge(bridge)
         }

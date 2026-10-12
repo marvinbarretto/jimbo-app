@@ -11,6 +11,8 @@ Current plugins:
 - `ActivityContextPlugin` (v1)
 - `HealthSnapshotPlugin` (v1)
 - `AuthPlugin` (v1) — API credentials for the hosted web shell
+- `DoNotDisturbPlugin` (v1) — focus blocks: access flow, enable (priority-only) and restore, with a native restore alarm
+- `UsageSlicePlugin` (v1) — per-app launches and foreground seconds for an arbitrary window (the focus retro)
 
 ---
 
@@ -159,7 +161,7 @@ interface NotificationTriggerPlugin {
 
 **Why:** Focus session "done" alert when app is backgrounded, morning briefing reminder.
 
-**Status:** built, registered as `notification@1`. `schedule` also takes an optional `tab` (opened as `/m/<tab>` on tap, default `today`) and `channelId` is one of `briefing` | `nudges` | `gym`. Alarms are inexact and do not survive a reboot. `sendTestNotification()` in `plugins/notification-trigger` fires one now.
+**Status:** built, registered as `notification@2` (v2 adds the vibrating `focus` channel). `schedule` also takes an optional `tab` (opened as `/m/<tab>` on tap, default `today`) and `channelId` is one of `briefing` | `nudges` | `gym` | `focus`. Alarms are inexact and do not survive a reboot. `sendTestNotification()` in `plugins/notification-trigger` fires one now.
 
 ---
 
