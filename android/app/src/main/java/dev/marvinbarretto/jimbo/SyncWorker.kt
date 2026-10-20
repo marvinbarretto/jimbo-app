@@ -7,6 +7,7 @@ import android.os.BatteryManager
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import dev.marvinbarretto.jimbo.telemetry.DailyBackfillState
 import dev.marvinbarretto.jimbo.telemetry.GymSessionBridge
 import dev.marvinbarretto.jimbo.telemetry.SyncConstraintsRepository
 import dev.marvinbarretto.jimbo.telemetry.TelemetryStore
@@ -42,6 +43,12 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         )
 
         val drainOutcome = TelemetrySyncer(applicationContext).drainPending()
+
+        // Closed days staged by the Health Connect collector count as posted only
+        // once the queue has drained; until then they are re-staged next sync.
+        if (drainOutcome is TelemetryDrainOutcome.Success) {
+            DailyBackfillState(applicationContext).commitStaged()
+        }
 
         // Bridge HC exercise sessions → gym sessions only after telemetry sync
         // succeeded — if the network is flaky, no point trying gym POSTs either.

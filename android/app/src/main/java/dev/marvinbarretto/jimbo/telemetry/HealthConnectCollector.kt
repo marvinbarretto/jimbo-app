@@ -16,6 +16,7 @@ import dev.marvinbarretto.jimbo.HealthConnectReader
 import dev.marvinbarretto.jimbo.exerciseTypeName
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 private const val TAG = "HealthCollector"
@@ -52,6 +53,7 @@ class HealthConnectCollector(
 
         collectAggregateMetrics(client, filter, window, events)
         collectDailyTotals(client, window, events)
+        collectMissedDays(client, window, events)
         collectFloors(client, filter, window, events)
         collectExerciseSessions(client, filter, window, events)
 
@@ -158,39 +160,73 @@ class HealthConnectCollector(
         if (!window.end.isAfter(dayStart)) return
 
         try {
-            val aggregate = client.aggregate(
-                AggregateRequest(
-                    metrics = setOf(
-                        StepsRecord.COUNT_TOTAL,
-                        DistanceRecord.DISTANCE_TOTAL,
-                        androidx.health.connect.client.records.TotalCaloriesBurnedRecord.ENERGY_TOTAL
-                    ),
-                    timeRangeFilter = TimeRangeFilter.between(dayStart, window.end)
-                )
-            )
-
-            fun daily(type: String, value: Double, unit: String) {
-                events += RawEvent(
-                    collector = id,
-                    type = type,
-                    ts = dayStart,
-                    tsEnd = window.end,
-                    value = value,
-                    unit = unit,
-                    source = DAILY_SOURCE
-                )
-            }
-
-            aggregate[StepsRecord.COUNT_TOTAL]?.let { daily("steps_daily", it.toDouble(), "count") }
-            aggregate[DistanceRecord.DISTANCE_TOTAL]?.let { daily("distance_daily", it.inMeters, "meters") }
-            aggregate[androidx.health.connect.client.records.TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.let {
-                daily("calories_total_daily", it.inKilocalories, "kcal")
-            }
+            events += dailyEvents(client, dayStart, window.end)
         } catch (e: Exception) {
             Log.e(TAG, "Daily totals failed", e)
             events += errorEvent("daily_totals", e, window)
         }
     }
+
+    /**
+     * Closed days the server has not been sent `*_daily` rows for, oldest first,
+     * at most [MAX_BACKFILL_DAYS] back. A phone that could not sync for days
+     * (Wi-Fi-only abroad, 17-23 Sep 2026) otherwise never posts those days:
+     * [collectDailyTotals] only ever covers today. Health Connect keeps the
+     * history, so each day is simply re-read. Event ids are content-derived, so
+     * re-posting a day with the same totals is harmless.
+     */
+    private suspend fun collectMissedDays(
+        client: HealthConnectClient,
+        window: TimeWindow,
+        events: MutableList<RawEvent>
+    ) {
+        val state = DailyBackfillState(context)
+        val yesterday = startOfLogicalDay(window.end).atZone(ZoneId.systemDefault()).toLocalDate().minusDays(1)
+        var reached: LocalDate? = null
+        for (day in missedDays(state.lastPosted(), yesterday)) {
+            try {
+                events += dailyEvents(client, logicalDayStart(day), logicalDayStart(day.plusDays(1)))
+                reached = day
+            } catch (e: Exception) {
+                Log.e(TAG, "Backfill of $day failed", e)
+                events += errorEvent("daily_backfill", e, window)
+                break
+            }
+        }
+        reached?.let(state::stage)
+    }
+
+    private suspend fun dailyEvents(client: HealthConnectClient, from: Instant, to: Instant): List<RawEvent> {
+        val aggregate = client.aggregate(
+            AggregateRequest(
+                metrics = setOf(
+                    StepsRecord.COUNT_TOTAL,
+                    DistanceRecord.DISTANCE_TOTAL,
+                    androidx.health.connect.client.records.TotalCaloriesBurnedRecord.ENERGY_TOTAL
+                ),
+                timeRangeFilter = TimeRangeFilter.between(from, to)
+            )
+        )
+        fun daily(type: String, value: Double, unit: String) = RawEvent(
+            collector = id,
+            type = type,
+            ts = from,
+            tsEnd = to,
+            value = value,
+            unit = unit,
+            source = DAILY_SOURCE
+        )
+        return listOfNotNull(
+            aggregate[StepsRecord.COUNT_TOTAL]?.let { daily("steps_daily", it.toDouble(), "count") },
+            aggregate[DistanceRecord.DISTANCE_TOTAL]?.let { daily("distance_daily", it.inMeters, "meters") },
+            aggregate[androidx.health.connect.client.records.TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.let {
+                daily("calories_total_daily", it.inKilocalories, "kcal")
+            }
+        )
+    }
+
+    private fun logicalDayStart(day: LocalDate): Instant =
+        day.atStartOfDay(ZoneId.systemDefault()).plusHours(LOGICAL_DAY_CUTOVER_HOURS).toInstant()
 
     /** The cutover instant on or before [now], in the device's zone. */
     private fun startOfLogicalDay(now: Instant): Instant {
