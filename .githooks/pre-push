@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Pre-push gate: before a push to master, run what CI's verify job runs, so
+# master is green before it is pushed rather than after. This repo's lane is
+# master (docs/repo.md `ship:`, jimbo ADR-0126), and a straight push to master
+# had no check before it until 2026-10-21. CI runs the same unit tests, on hosted runners.
+#
+# Bypass in an emergency: JIMBO_SKIP_GATE=1 git push. A commit that already
+# passed is not checked twice (a retried push goes straight through).
+
+set -uo pipefail
+ZERO=0000000000000000000000000000000000000000
+
+gated=0
+pushed=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] || [ "$local_sha" = "$ZERO" ] && continue
+  case "${remote_ref:-}" in
+    refs/heads/master|refs/heads/main) gated=1; pushed="$pushed $local_sha" ;;
+  esac
+done
+[ "$gated" -eq 0 ] && exit 0
+
+if [ "${JIMBO_SKIP_GATE:-0}" = "1" ]; then
+  echo "⚠ pre-push: JIMBO_SKIP_GATE=1 — skipping checks. Master may go red." >&2
+  exit 0
+fi
+
+PASSED_FILE="$(git rev-parse --git-common-dir)/jimbo-gate-passed"
+case "$PASSED_FILE" in /*) ;; *) PASSED_FILE="$(pwd)/$PASSED_FILE" ;; esac
+all_passed=1
+for sha in $pushed; do grep -qx "$sha" "$PASSED_FILE" 2>/dev/null || { all_passed=0; break; }; done
+if [ "$all_passed" -eq 1 ]; then
+  echo "✓ pre-push: already passed for${pushed}."
+  exit 0
+fi
+
+# A push from a worktree hands hooks GIT_DIR and friends pointing at the shared
+# repo, and a test that runs `git init` in a temp dir would then write to the
+# real one. Clear them and run from the checkout, as a normal push would.
+ROOT="$(git rev-parse --show-toplevel)"
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR \
+      GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_PREFIX
+cd "$ROOT" || exit 1
+
+fail() {
+  echo "✗ pre-push: $1 failed — refusing to push to master." >&2
+  echo "    fix it, or bypass: JIMBO_SKIP_GATE=1 git push" >&2
+  exit 1
+}
+
+echo "→ pre-push: running CI's checks…"
+# android/ builds against node_modules and capacitor-cordova-android-plugins/,
+# which is generated and gitignored. CI makes both every run; here only a
+# fresh checkout (a new worktree) lacks them.
+[ -d node_modules ] || npm ci --silent || fail "npm ci"
+[ -f android/capacitor-cordova-android-plugins/cordova.variables.gradle ] \
+  || npx cap sync android >/dev/null || fail "npx cap sync android"
+(cd android && ./gradlew testDebugUnitTest --no-daemon -q) || fail "the unit tests"
+
+for sha in $pushed; do echo "$sha" >> "$PASSED_FILE"; done
+tail -n 50 "$PASSED_FILE" > "$PASSED_FILE.tmp" 2>/dev/null && mv "$PASSED_FILE.tmp" "$PASSED_FILE"
+echo "✓ pre-push: checks passed."
+exit 0
