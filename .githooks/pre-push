@@ -50,9 +50,14 @@ fail() {
 
 echo "→ pre-push: running CI's checks…"
 # android/ builds against node_modules and capacitor-cordova-android-plugins/,
-# which is generated and gitignored. CI makes both every run; here only a
-# fresh checkout (a new worktree) lacks them.
-[ -d node_modules ] || npm ci --silent || fail "npm ci"
+# which is generated and gitignored; CI makes both every run.
+# CI installs dependencies fresh each run; a checkout's node_modules can be
+# weeks behind its lockfile (the M2's dashboard was, 2026-10-21, and its build
+# failed on a package added since). Install when the lockfile is newer.
+if [ ! -d node_modules ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
+  echo "  installing dependencies (package-lock.json is newer than node_modules)"
+  npm ci --silent || fail "npm ci"
+fi
 [ -f android/capacitor-cordova-android-plugins/cordova.variables.gradle ] \
   || npx cap sync android >/dev/null || fail "npx cap sync android"
 (cd android && ./gradlew testDebugUnitTest --no-daemon -q) || fail "the unit tests"
