@@ -8,6 +8,12 @@ role: Android telemetry shell — native Kotlin collectors feeding the Jimbo API
 entry_points: CLAUDE.md, then docs/capacitor-migration-handoff.md, and android/app/src/main/java/dev/marvinbarretto/jimbo/ (collectors, plugins, SyncWorker).
 autonomy_level: propose            # ships to a physical device — human in the loop
 
+# ── How work lands (read by jimbo-api/scripts/claude-code-hooks/repo-ship.mjs) ──
+ship:
+  lane: master                     # master | pr
+  why: CI runs on hosted runners for both PRs and master pushes, so a PR doubles the rationed spend (ADR-0121)
+  pr_needs: []
+
 # ── Pointer ──
 conventions: ./CLAUDE.md
 
