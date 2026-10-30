@@ -37,7 +37,7 @@ Entry point: `MainActivity.kt` extends `BridgeActivity`. On launch it registers 
 - `telemetry/TelemetryStore` orchestrates collectors and writes raw events to Room.
 - `telemetry/TelemetrySyncer` drains the Room queue to `/api/telemetry/events`, with retry + dead-letter handling.
 - `telemetry/GymSessionBridge` reads HC `ExerciseSessionRecord`s and POSTs them as `gym_sessions` + `gym_session_cardio` after each successful telemetry sync; deduped locally via `gym_session_pushes`.
-- `JimboClient` — raw `HttpsURLConnection` with trust-all TLS (self-signed cert on the API VPS).
+- `JimboClient` — raw `HttpsURLConnection` with normal certificate checks against `jimbo.fourfoldmedia.uk` (TlsVerificationTest; trust-all went 2026-10-13).
 - `BootReceiver` re-arms collectors and the periodic sync after reboot / package replacement.
 
 ## Bridge from native to PWA

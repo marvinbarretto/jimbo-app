@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  HTTPS only, public CAs only. The API and the /m shell are both at
+  jimbo.fourfoldmedia.uk, which has a public certificate. Until 2026-10-30 a
+  domain-config here trusted user-installed CAs for the VPS's raw IP, left from
+  its self-signed certificate; nothing has called the IP since the 13 Oct build
+  (TlsVerificationTest), so it went, and a droplet move is a DNS change.
+-->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="false">167.99.206.214</domain>
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system"/>
-            <certificates src="user"/>
         </trust-anchors>
-    </domain-config>
+    </base-config>
 </network-security-config>
