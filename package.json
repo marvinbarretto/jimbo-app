@@ -6,7 +6,8 @@
   "scripts": {
     "cap:sync": "cap sync android",
     "cap:open": "cap open android",
-    "cap:run": "cap run android"
+    "cap:run": "cap run android",
+    "status": "node $HOME/.jimbo/hooks/jimbo-api/scripts/claude-code-hooks/handoff.mjs status"
   },
   "dependencies": {
     "@capacitor/android": "8.3.4",
