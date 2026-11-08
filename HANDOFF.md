@@ -4,4 +4,4 @@ Open threads only, one line each: `- YYYY-MM-DD · owner: <who> · <what, and th
 Edit your own lines, never rewrite the file; delete a line when it is done (git keeps the history). Live state comes
 from `npm run status`; traps go in AGENTS.md (jimbo ADR-0165).
 - 2026-11-08 · owner: claude · Geofence trial (home/gym/moons) live since 03:17. Battery cost now records itself: BatteryUsageCollector sends jimbo-app's and Play services' mAh-since-charge hourly (collector `battery_usage`); compare the last reading before each charge across days, then tune the 100 m radii from the `place` events
-- 2026-11-08 · owner: claude · Walk mode built (HW-7852): needs `jimbo.walk.spots` in android/local.properties and `scripts/install-phone.sh --live` before the Watford walk; then count `walk.trigger` events per walk (the epic's ≥5 stories within 30 m) [HW-7852]
+- 2026-11-08 · owner: claude · Walk mode built (HW-7852), five Watford spots set in android/local.properties: needs `scripts/install-phone.sh --live` and the five mp3s pushed to files/walk/ (AGENTS.md) before the Watford walk; then count `walk.trigger` events per walk (the epic's ≥5 stories within 30 m) [HW-7852]
