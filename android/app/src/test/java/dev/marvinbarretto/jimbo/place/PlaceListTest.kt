@@ -47,4 +47,16 @@ class PlaceListTest {
         assertEquals(51.9, fences.first { it.id == "gym" }.latitude, 0.0)
         assertEquals(80f, fences.first { it.id == "gym" }.radiusMetres, 0f)
     }
+
+    @Test fun readsAnOptionalQuipList() {
+        val fences = PlaceGeofence.parseList("moons|51.2,-0.41,100|The Office|pub-quips;gym|51.3,-0.42|Gym")
+        assertEquals("pub-quips", fences[0].quipList)
+        assertEquals("The Office", fences[0].label)
+        assertNull(fences[1].quipList)
+    }
+
+    @Test fun refusesAQuipListThatIsNotAListId() {
+        assertTrue(PlaceGeofence.parseList("moons|51.2,-0.41|Office|Pub Quips!").isEmpty())
+        assertTrue(PlaceGeofence.parseList("moons|51.2,-0.41|Office|x|extra").isEmpty())
+    }
 }

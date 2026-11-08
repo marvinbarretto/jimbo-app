@@ -36,6 +36,13 @@ object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
 
     fun getJson(path: String): Pair<Int, String> = sendJson("GET", path, null)
 
+    /** Unshown entries of one Jimbo list (status want), at most [limit]. */
+    fun getWantedListEntries(list: String, limit: Int = 50): Pair<Int, String> =
+        sendJson("GET", "/api/lists/entries?list=$list&status=want&limit=$limit", null)
+
+    fun patchListEntry(entryId: String, jsonBody: String): Pair<Int, String> =
+        sendJson("PATCH", "/api/lists/entries/$entryId", jsonBody)
+
     /**
      * BuildConfig.JIMBO_API_URL comes from local.properties and JIMBO_API_KEY
      * from the environment at build time: `scripts/install-phone.sh` runs the

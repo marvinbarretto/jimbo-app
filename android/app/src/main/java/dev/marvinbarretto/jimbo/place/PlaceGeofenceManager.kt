@@ -38,10 +38,14 @@ object PlaceGeofenceManager {
             .setInitialTrigger(0)
             .addGeofences(fences.map { it.toGeofence() })
             .build()
-        LocationServices.getGeofencingClient(context)
-            .addGeofences(request, pendingIntent(context))
-            .addOnSuccessListener { Log.d(TAG, "Geofences registered: ${fences.map { it.requestId }}") }
-            .addOnFailureListener { Log.e(TAG, "Failed to register geofences", it) }
+        // Clear what this app registered before, so a fence renamed or dropped
+        // from the config stops firing instead of lingering until a reboot.
+        val client = LocationServices.getGeofencingClient(context)
+        client.removeGeofences(pendingIntent(context)).addOnCompleteListener {
+            client.addGeofences(request, pendingIntent(context))
+                .addOnSuccessListener { Log.d(TAG, "Geofences registered: ${fences.map { it.requestId }}") }
+                .addOnFailureListener { Log.e(TAG, "Failed to register geofences", it) }
+        }
     }
 
     private fun PlaceGeofence.toGeofence(): Geofence =

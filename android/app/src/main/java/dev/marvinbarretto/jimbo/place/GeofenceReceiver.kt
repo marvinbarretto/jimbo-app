@@ -64,7 +64,14 @@ class GeofenceReceiver : BroadcastReceiver() {
                     offerSessionStart(context)
                 }
                 if (transition == Geofence.GEOFENCE_TRANSITION_DWELL) {
-                    fences.filter { it.notifiesOnDwell }.forEach { notifyArrival(context, it, now) }
+                    fences.filter { it.notifiesOnDwell }.forEach { fence ->
+                        if (fence.quipList != null) {
+                            PlaceQuipWorker.enqueue(context, fence, now)
+                        } else {
+                            val since = java.time.LocalTime.now().minusMinutes(3).withSecond(0).withNano(0)
+                            PlaceNotifier.show(context, fence.id, "At ${fence.label}", "Here since about $since. Jimbo logged the visit.", now)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Geofence handling failed", e)
@@ -94,31 +101,6 @@ class GeofenceReceiver : BroadcastReceiver() {
         }
         database.eventDao().insertAll(events.map { it.toEntity() })
         Log.d(TAG, "Recorded $type for ${fences.map { it.id }}")
-    }
-
-    private fun notifyArrival(context: Context, fence: PlaceGeofence, now: Long) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED
-        ) return
-        NotificationChannels.ensureCreated(context)
-        val since = java.time.LocalTime.now().minusMinutes(3).withSecond(0).withNano(0)
-        val tap = PendingIntent.getActivity(
-            context,
-            fence.id.hashCode(),
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val notification = NotificationCompat.Builder(context, NotificationChannels.PLACES)
-            .setSmallIcon(android.R.drawable.ic_dialog_map)
-            .setContentTitle("At ${fence.label}")
-            .setContentText("Here since about $since. Jimbo logged the visit.")
-            .setContentIntent(tap)
-            .setAutoCancel(true)
-            .setWhen(now)
-            .build()
-        context.getSystemService(NotificationManager::class.java).notify(PLACE_NOTIFICATION_BASE + (fence.id.hashCode() and 0xffff), notification)
     }
 
     private fun offerSessionStart(context: Context) {
@@ -153,6 +135,5 @@ class GeofenceReceiver : BroadcastReceiver() {
         /** Set on the tap intent; MainActivity starts a session before opening /m/train. */
         const val EXTRA_START_SESSION = "jimbo_start_gym_session"
         private const val NOTIFICATION_ID = 0x6a796d
-        private const val PLACE_NOTIFICATION_BASE = 0x706c0000
     }
 }

@@ -6,9 +6,11 @@ import dev.marvinbarretto.jimbo.BuildConfig
  * The geofence set, defined here rather than in a UI. Coordinates are private,
  * so they come from local.properties via BuildConfig, never from git:
  *
- * - `jimbo.places` — the list, `id|lat,lng[,radiusMetres]|label` joined by `;`.
- *   An entry with a label notifies once you have stayed there a few minutes
- *   (DWELL); one without only records its transitions. Ids `home` and `gym`
+ * - `jimbo.places` — the list, `id|lat,lng[,radiusMetres]|label|quipList`
+ *   joined by `;`. An entry with a label notifies once you have stayed there a
+ *   few minutes (DWELL); one without only records its transitions. With a
+ *   quipList (a Jimbo list id) the notification shows an unshown line from that
+ *   list instead of the plain text (PlaceQuipWorker). Ids `home` and `gym`
  *   are the named places the /m shell knows; any other id is reported as
  *   [Place.OTHER] to the shell but keeps its own id in telemetry.
  * - `jimbo.place.home` / `jimbo.place.gym` — the older single-place keys,
@@ -22,6 +24,7 @@ data class PlaceGeofence(
     val longitude: Double,
     val radiusMetres: Float,
     val label: String? = null,
+    val quipList: String? = null,
 ) {
     val requestId: String get() = id
     val place: Place get() = placeForRequestId(id) ?: Place.OTHER
@@ -32,6 +35,7 @@ data class PlaceGeofence(
     companion object {
         const val DEFAULT_RADIUS_M = 150f
         private val ID = Regex("^[a-z0-9_-]{1,32}$")
+        private val LIST_ID = Regex("^[a-z][a-z0-9-]{0,39}$")
 
         fun configured(): List<PlaceGeofence> =
             fromConfig(BuildConfig.JIMBO_PLACE_HOME, BuildConfig.JIMBO_PLACE_GYM, BuildConfig.JIMBO_PLACES)
@@ -53,11 +57,13 @@ data class PlaceGeofence(
             .filter { it.isNotEmpty() }
             .mapNotNull { entry ->
                 val parts = entry.split('|').map { it.trim() }
-                if (parts.size !in 2..3) return@mapNotNull null
+                if (parts.size !in 2..4) return@mapNotNull null
                 val id = parts[0].lowercase()
                 if (!ID.matches(id)) return@mapNotNull null
                 val (lat, lng, r) = parseCoords(parts[1]) ?: return@mapNotNull null
-                PlaceGeofence(id, lat, lng, r, parts.getOrNull(2)?.takeIf { it.isNotEmpty() })
+                val quipList = parts.getOrNull(3)?.takeIf { it.isNotEmpty() }
+                if (quipList != null && !LIST_ID.matches(quipList)) return@mapNotNull null
+                PlaceGeofence(id, lat, lng, r, parts.getOrNull(2)?.takeIf { it.isNotEmpty() }, quipList)
             }
             .distinctBy { it.id }
 
