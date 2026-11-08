@@ -19,17 +19,32 @@ private val SPEECH: AudioAttributes = AudioAttributes.Builder()
     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
     .build()
 
-/** WalkAudioFocus on AudioManager. A ducking request is not a loss: the clip plays on. */
+/**
+ * WalkAudioFocus on AudioManager. A permanent loss goes to onLoss; a transient
+ * loss, a duck and focus coming back go to onChange (WalkAudio pauses, plays
+ * on, resumes). The request is kept through a transient loss: the system
+ * hands focus back to the same request.
+ */
 class AndroidWalkAudioFocus(context: Context) : WalkAudioFocus {
     private val manager = context.getSystemService(AudioManager::class.java)
     private val main = Handler(Looper.getMainLooper())
     private var held: AudioFocusRequest? = null
 
-    override fun request(gain: Int, onLoss: () -> Unit): Boolean {
+    /** Without change reporting, a transient loss counts as a loss (walk 1's behaviour). */
+    override fun request(gain: Int, onLoss: () -> Unit): Boolean =
+        requestWithChanges(gain, onLoss) { if (it == FocusChange.LOSS_TRANSIENT) onLoss() }
+
+    override fun requestWithChanges(gain: Int, onLoss: () -> Unit, onChange: (FocusChange) -> Unit): Boolean {
         val request = AudioFocusRequest.Builder(gain)
             .setAudioAttributes(SPEECH)
             .setOnAudioFocusChangeListener({ change ->
-                if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) onLoss()
+                Log.d(TAG, "Audio focus change $change")
+                when (change) {
+                    AudioManager.AUDIOFOCUS_LOSS -> onLoss()
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> onChange(FocusChange.LOSS_TRANSIENT)
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> onChange(FocusChange.DUCK)
+                    AudioManager.AUDIOFOCUS_GAIN -> onChange(FocusChange.GAIN)
+                }
             }, main)
             .build()
         val granted = manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
@@ -50,11 +65,15 @@ class AndroidWalkAudioFocus(context: Context) : WalkAudioFocus {
  * (/sdcard/Android/data/dev.marvinbarretto.jimbo/files/walk/, `adb push` puts
  * them there). No such file means a placeholder: the clip name spoken aloud by
  * TextToSpeech, a few seconds long so the podcast pause is noticeable.
+ * A file can pause, resume and seek; a placeholder cannot (pause() is false).
  * Callbacks arrive on the main looper.
  */
 class AndroidWalkClipPlayer(private val context: Context) : WalkClipPlayer {
     private val main = Handler(Looper.getMainLooper())
     private var media: MediaPlayer? = null
+    // A pause that arrives while the file is still preparing holds its start until resume.
+    private var prepared = false
+    private var holdStart = false
     private var ttsReady = false
     private var pendingSpeech: (() -> Unit)? = null
     private var tts: TextToSpeech? = TextToSpeech(context) { status ->
@@ -80,8 +99,31 @@ class AndroidWalkClipPlayer(private val context: Context) : WalkClipPlayer {
         pendingSpeech = null
         media?.let { runCatching { it.stop() }; it.release() }
         media = null
+        prepared = false
+        holdStart = false
         tts?.stop()
     }
+
+    override fun pause(): Boolean {
+        val player = media ?: return false
+        if (!prepared) { holdStart = true; return true }
+        return runCatching { if (player.isPlaying) player.pause() }.isSuccess
+    }
+
+    override fun resume() {
+        val player = media ?: return
+        if (!prepared) { holdStart = false; return }
+        runCatching { player.start() }.onFailure { Log.e(TAG, "Clip would not resume", it) }
+    }
+
+    override fun seekBy(ms: Int) {
+        val player = media?.takeIf { prepared } ?: return
+        runCatching { player.seekTo(maxOf(0, player.currentPosition + ms)) }
+    }
+
+    override fun positionMs(): Int? = media?.takeIf { prepared }?.let { runCatching { it.currentPosition }.getOrNull() }
+
+    override fun hasClip(clip: String): Boolean = clipFile(clip) != null
 
     /** Ends the session's audio for good: the service calls this on stop. */
     fun shutdown() {
@@ -99,10 +141,16 @@ class AndroidWalkClipPlayer(private val context: Context) : WalkClipPlayer {
     private fun playFile(file: File, onDone: () -> Unit, onError: () -> Unit) {
         val player = MediaPlayer()
         media = player
+        prepared = false
+        holdStart = false
         try {
             player.setAudioAttributes(SPEECH)
             player.setDataSource(file.path)
-            player.setOnPreparedListener { it.start() }
+            player.setOnPreparedListener {
+                if (media !== it) return@setOnPreparedListener
+                prepared = true
+                if (!holdStart) it.start()
+            }
             player.setOnCompletionListener { release(it); onDone() }
             player.setOnErrorListener { mp, what, extra ->
                 Log.e(TAG, "Clip ${file.name} failed ($what/$extra)")
@@ -121,7 +169,11 @@ class AndroidWalkClipPlayer(private val context: Context) : WalkClipPlayer {
 
     private fun release(player: MediaPlayer) {
         player.release()
-        if (media === player) media = null
+        if (media === player) {
+            media = null
+            prepared = false
+            holdStart = false
+        }
     }
 
     private fun speakPlaceholder(clip: String, onDone: () -> Unit, onError: () -> Unit) {

@@ -1,10 +1,12 @@
 package dev.marvinbarretto.jimbo.telemetry
 
+import dev.marvinbarretto.jimbo.walk.WalkControl
 import dev.marvinbarretto.jimbo.walk.WalkHit
+import dev.marvinbarretto.jimbo.walk.WalkMediaSnapshot
 import java.time.Instant
 
 /**
- * Walk mode (walk.start / walk.trigger / walk.stop). Events come from the walk
+ * Walk mode (walk.start / walk.trigger / walk.stop, plus the diagnostics below). Events come from the walk
  * session (walk/WalkSessionService), not from polling; this entry exists so the
  * collector has a setting row and can be switched off like the others. A
  * trigger carries the spot id and distance, never coordinates, as
@@ -48,7 +50,8 @@ class WalkCollector : Collector {
             payload = mapOf("walk" to walkId, "triggered" to triggered),
         )
 
-        // Diagnostics (walk.fix / walk.audio / walk.summary): enough to explain a
+        // Diagnostics (walk.fix / walk.audio / walk.summary, and since walk 2 walk.choice /
+        // walk.control / walk.media): enough to explain a
         // walk afterwards, such as a spot that stayed silent. Still never coordinates.
 
         /** One location fix: the nearest spot not yet played, how far, how sure, the gap since the last fix. */
@@ -69,8 +72,11 @@ class WalkCollector : Collector {
             },
         )
 
-        /** One audio step (WalkAudio's phases: focus_granted, clip_start, clip_end, focus_abandoned, ...). */
-        fun audio(walkId: String?, phase: String, clip: String?, at: Instant): RawEvent = RawEvent(
+        /**
+         * One audio step (WalkAudio's phases: focus_granted, clip_start, clip_end, focus_abandoned, ...).
+         * [kind] on focus_lost says which loss: transient (paused), permanent (stopped) or duck (played on).
+         */
+        fun audio(walkId: String?, phase: String, clip: String?, at: Instant, kind: String? = null): RawEvent = RawEvent(
             collector = ID,
             type = "walk.audio",
             ts = at,
@@ -78,6 +84,51 @@ class WalkCollector : Collector {
                 if (walkId != null) put("walk", walkId)
                 put("phase", phase)
                 if (clip != null) put("clip", clip)
+                if (kind != null) put("kind", kind)
+            },
+        )
+
+        /** The "More" offer after a short clip (WalkChoice): offered, taken, declined or expired, and why it lapsed. */
+        fun choice(walkId: String?, choice: String, clip: String, reason: String?, at: Instant): RawEvent = RawEvent(
+            collector = ID,
+            type = "walk.choice",
+            ts = at,
+            payload = buildMap {
+                if (walkId != null) put("walk", walkId)
+                put("choice", choice)
+                put("clip", clip)
+                if (reason != null) put("reason", reason)
+            },
+        )
+
+        /** A notification control (pause, resume, back, skip): the clip and where it was; applied false when nothing played. */
+        fun control(walkId: String?, control: WalkControl, at: Instant): RawEvent = RawEvent(
+            collector = ID,
+            type = "walk.control",
+            ts = at,
+            payload = buildMap {
+                if (walkId != null) put("walk", walkId)
+                put("action", control.action)
+                if (control.clip != null) put("clip", control.clip)
+                if (control.positionSeconds != null) put("position_s", control.positionSeconds)
+                put("applied", control.applied)
+            },
+        )
+
+        /** Other apps' media sessions at one point around a clip (WalkMediaWatch), or why they could not be read. */
+        fun media(walkId: String?, point: String, clip: String?, snapshot: WalkMediaSnapshot, at: Instant): RawEvent = RawEvent(
+            collector = ID,
+            type = "walk.media",
+            ts = at,
+            payload = buildMap {
+                if (walkId != null) put("walk", walkId)
+                put("point", point)
+                if (clip != null) put("clip", clip)
+                if (snapshot.error != null) {
+                    put("error", snapshot.error)
+                } else {
+                    put("sessions", snapshot.sessions.map { mapOf("package" to it.pkg, "state" to it.state) })
+                }
             },
         )
 
