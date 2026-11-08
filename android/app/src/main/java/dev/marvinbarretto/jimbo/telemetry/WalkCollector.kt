@@ -48,6 +48,57 @@ class WalkCollector : Collector {
             payload = mapOf("walk" to walkId, "triggered" to triggered),
         )
 
+        // Diagnostics (walk.fix / walk.audio / walk.summary): enough to explain a
+        // walk afterwards, such as a spot that stayed silent. Still never coordinates.
+
+        /** One location fix: the nearest spot not yet played, how far, how sure, the gap since the last fix. */
+        fun fix(
+            walkId: String, accuracyMetres: Float?, nearestSpot: String?, nearestMetres: Double?,
+            gapSeconds: Double?, ignored: Boolean, at: Instant,
+        ): RawEvent = RawEvent(
+            collector = ID,
+            type = "walk.fix",
+            ts = at,
+            payload = buildMap {
+                put("walk", walkId)
+                if (accuracyMetres != null) put("accuracy_m", tenths(accuracyMetres.toDouble()))
+                if (nearestSpot != null) put("nearest", nearestSpot)
+                if (nearestMetres != null) put("nearest_m", tenths(nearestMetres))
+                if (gapSeconds != null) put("gap_s", tenths(gapSeconds))
+                if (ignored) put("ignored", true)
+            },
+        )
+
+        /** One audio step (WalkAudio's phases: focus_granted, clip_start, clip_end, focus_abandoned, ...). */
+        fun audio(walkId: String?, phase: String, clip: String?, at: Instant): RawEvent = RawEvent(
+            collector = ID,
+            type = "walk.audio",
+            ts = at,
+            payload = buildMap {
+                if (walkId != null) put("walk", walkId)
+                put("phase", phase)
+                if (clip != null) put("clip", clip)
+            },
+        )
+
+        /** At stop: how many fixes came, how many were too vague, the longest silence between fixes, battery. */
+        fun summary(
+            walkId: String, fixes: Int, ignored: Int, maxGapSeconds: Double?,
+            batteryStart: Int?, batteryEnd: Int?, at: Instant,
+        ): RawEvent = RawEvent(
+            collector = ID,
+            type = "walk.summary",
+            ts = at,
+            payload = buildMap {
+                put("walk", walkId)
+                put("fixes", fixes)
+                put("ignored", ignored)
+                if (maxGapSeconds != null) put("max_gap_s", tenths(maxGapSeconds))
+                if (batteryStart != null) put("battery_start", batteryStart)
+                if (batteryEnd != null) put("battery_end", batteryEnd)
+            },
+        )
+
         private fun tenths(value: Double): Double = Math.round(value * 10) / 10.0
     }
 }

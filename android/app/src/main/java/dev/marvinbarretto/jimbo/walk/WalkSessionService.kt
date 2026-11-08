@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.os.BatteryManager
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -16,6 +17,8 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import dev.marvinbarretto.jimbo.BuildConfig
 import dev.marvinbarretto.jimbo.NotificationChannels
+import dev.marvinbarretto.jimbo.telemetry.WalkCollector
+import java.time.Instant
 
 private const val TAG = "JimboWalk"
 
@@ -62,11 +65,18 @@ class WalkSessionService : Service() {
         getSystemService(NotificationManager::class.java).cancel(WalkNotifications.IDLE_ID)
         val clipPlayer = AndroidWalkClipPlayer(this)
         player = clipPlayer
+        val sink = RoomWalkEventSink(this)
+        val audio = WalkAudio(AndroidWalkAudioFocus(this), clipPlayer, report = { phase, clip ->
+            Log.d(TAG, "Audio $phase ${clip ?: ""}")
+            sink.record(WalkCollector.audio(session?.currentWalkId, phase, clip, Instant.now()))
+        })
         val walk = WalkSession(
             spots = spots,
             location = FusedWalkLocation(this),
-            playback = WalkAudio(AndroidWalkAudioFocus(this), clipPlayer),
-            events = RoomWalkEventSink(this),
+            playback = audio,
+            events = sink,
+            diagnostics = sink,
+            battery = ::batteryPercent,
             onHit = hit@{ hit ->
                 Log.d(TAG, "Reached ${hit.spot.id} at ${"%.1f".format(hit.distanceMetres)} m")
                 val running = session ?: return@hit
@@ -99,6 +109,11 @@ class WalkSessionService : Service() {
         player = null
         super.onDestroy()
     }
+
+    private fun batteryPercent(): Int? =
+        getSystemService(BatteryManager::class.java)
+            ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            ?.takeIf { it in 0..100 }
 
     private fun hasFineLocation() =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED

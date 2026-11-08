@@ -26,6 +26,8 @@ interface WalkClipPlayer {
 class WalkAudio(
     private val focus: WalkAudioFocus,
     private val player: WalkClipPlayer,
+    /** Each step, for diagnostics: focus_granted, focus_refused, queued, clip_start, clip_end, clip_error, focus_lost, focus_abandoned. */
+    private val report: (phase: String, clip: String?) -> Unit = { _, _ -> },
 ) : WalkPlayback {
     private val queue = ArrayDeque<String>()
     private var playing = false
@@ -34,7 +36,7 @@ class WalkAudio(
 
     override fun play(clip: String) {
         queue.addLast(clip)
-        if (!playing) startNext(needFocus = true)
+        if (playing) report("queued", clip) else startNext(needFocus = true)
     }
 
     override fun stop() {
@@ -44,19 +46,33 @@ class WalkAudio(
         playing = false
         player.stop()
         focus.abandon()
+        report("focus_abandoned", null)
     }
 
     private fun startNext(needFocus: Boolean) {
         val clip = queue.removeFirstOrNull() ?: return
-        if (needFocus && !focus.request(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT, onLoss = ::stop)) {
-            // Refused (a call, say): this clip is skipped, not held for later.
-            queue.clear()
-            return
+        if (needFocus) {
+            if (!focus.request(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT, onLoss = ::onFocusLost)) {
+                // Refused (a call, say): this clip is skipped, not held for later.
+                report("focus_refused", clip)
+                queue.clear()
+                return
+            }
+            report("focus_granted", clip)
         }
         playing = true
         val mine = ++generation
-        val finished = { if (mine == generation) onClipEnd() }
-        player.play(clip, onDone = finished, onError = finished)
+        report("clip_start", clip)
+        player.play(
+            clip,
+            onDone = { if (mine == generation) { report("clip_end", clip); onClipEnd() } },
+            onError = { if (mine == generation) { report("clip_error", clip); onClipEnd() } },
+        )
+    }
+
+    private fun onFocusLost() {
+        report("focus_lost", null)
+        stop()
     }
 
     private fun onClipEnd() {
@@ -64,6 +80,7 @@ class WalkAudio(
             generation++
             playing = false
             focus.abandon()
+            report("focus_abandoned", null)
         } else {
             startNext(needFocus = false)
         }
