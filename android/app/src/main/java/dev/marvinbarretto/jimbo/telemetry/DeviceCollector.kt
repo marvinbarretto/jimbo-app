@@ -57,8 +57,25 @@ class DeviceCollector(
                 persistBatterySnapshot(snapshot, now)
             }
 
+            // Backstop for a missed broadcast (process dead at the time): the
+            // regular sample notices that charging flipped since the last one.
+            if (action == null) {
+                if (!prefs.contains("last_power_connected")) {
+                    prefs.edit().putBoolean("last_power_connected", snapshot.isCharging).apply()
+                } else if (prefs.getBoolean("last_power_connected", snapshot.isCharging) != snapshot.isCharging) {
+                    events += RawEvent(
+                        collector = id,
+                        type = "charge_state_changed",
+                        ts = now,
+                        payload = mapOf("plugged_in" to snapshot.isCharging, "via" to "sample")
+                    )
+                    prefs.edit().putBoolean("last_power_connected", snapshot.isCharging).apply()
+                }
+            }
+
             if (action == Intent.ACTION_POWER_CONNECTED || action == Intent.ACTION_POWER_DISCONNECTED) {
-                val pluggedIn = snapshot.isCharging
+                // The broadcast says what happened; the battery's status can lag it.
+                val pluggedIn = action == Intent.ACTION_POWER_CONNECTED
                 val lastPluggedIn = prefs.getBoolean("last_power_connected", pluggedIn)
                 if (pluggedIn != lastPluggedIn || !prefs.contains("last_power_connected")) {
                     events += RawEvent(

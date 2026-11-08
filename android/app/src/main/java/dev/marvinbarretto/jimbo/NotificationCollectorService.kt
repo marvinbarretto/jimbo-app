@@ -142,14 +142,17 @@ class NotificationCollectorService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        record("notifications.posted", sbn)
+        record("notifications.posted", sbn, Instant.ofEpochMilli(sbn.postTime), null)
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        record("notifications.removed", sbn)
+    // The three-argument form carries why it went. Before 8 Nov 2026 removals
+    // were stamped with the notification's post time and no reason, so
+    // opened-vs-dismissed and how long it sat were both lost.
+    override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap, reason: Int) {
+        record("notifications.removed", sbn, Instant.now(), removalReasonName(reason))
     }
 
-    private fun record(type: String, sbn: StatusBarNotification) {
+    private fun record(type: String, sbn: StatusBarNotification, ts: Instant, reason: String?) {
         scope.launch {
             val database = StepsDatabase.getInstance(applicationContext)
             val enabled = database.collectorSettingDao().isEnabled(COLLECTOR_ID) ?: false
@@ -187,16 +190,21 @@ class NotificationCollectorService : NotificationListenerService() {
 
             val hasText = notification.extras?.getCharSequence("android.text") != null
 
+            val payload = mutableMapOf<String, Any?>(
+                "pkg" to sbn.packageName,
+                "category" to notification.category,
+                "importance" to importance,
+                "has_text" to hasText
+            )
+            if (reason != null) {
+                payload["reason"] = reason
+                payload["posted_at"] = Instant.ofEpochMilli(sbn.postTime).toString()
+            }
             val event = RawEvent(
                 collector = COLLECTOR_ID,
                 type = type,
-                ts = Instant.ofEpochMilli(sbn.postTime),
-                payload = mapOf(
-                    "pkg" to sbn.packageName,
-                    "category" to notification.category,
-                    "importance" to importance,
-                    "has_text" to hasText
-                )
+                ts = ts,
+                payload = payload
             )
             database.eventDao().insertAll(listOf(event.toEntity()))
             Log.d(TAG, "Recorded $type from ${sbn.packageName}")
@@ -210,3 +218,17 @@ class NotificationCollectorService : NotificationListenerService() {
         return nm.getNotificationChannel(channelId)?.importance
     }
 }
+
+/** Why a notification went, in plain words; the codes are NotificationListenerService.REASON_*. */
+internal fun removalReasonName(reason: Int): String = when (reason) {
+    NotificationListenerService.REASON_CLICK -> "opened"
+    NotificationListenerService.REASON_CANCEL -> "dismissed"
+    NotificationListenerService.REASON_CANCEL_ALL -> "dismissed_all"
+    NotificationListenerService.REASON_APP_CANCEL, NotificationListenerService.REASON_APP_CANCEL_ALL -> "cleared_by_app"
+    NotificationListenerService.REASON_SNOOZED -> "snoozed"
+    NotificationListenerService.REASON_TIMEOUT -> "timed_out"
+    NotificationListenerService.REASON_GROUP_SUMMARY_CANCELED -> "group_cleared"
+    NotificationListenerService.REASON_LISTENER_CANCEL -> "cleared_by_listener"
+    else -> "other_$reason"
+}
+

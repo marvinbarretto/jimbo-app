@@ -12,6 +12,7 @@ import dev.marvinbarretto.jimbo.data.StepsDatabase
 import dev.marvinbarretto.jimbo.exerciseTypeName
 import org.json.JSONObject
 import java.time.Duration
+import java.time.Instant
 
 private const val TAG = "GymBridge"
 
@@ -61,8 +62,13 @@ class GymSessionBridge(private val context: Context) {
         }
 
         val alreadyPushed = pushDao.pushedUids(records.map { it.metadata.id }).toSet()
+        val byUid = records.associateBy { it.metadata.id }
+        val keep = sessionsToPush(
+            records.map { BridgeRecord(it.metadata.id, it.startTime, it.endTime, it.exerciseType) },
+            alreadyPushed,
+        ).map { it.uid }.toSet()
         val pending = records
-            .filter { it.metadata.id !in alreadyPushed }
+            .filter { it.metadata.id in keep }
             .filter { Duration.between(it.startTime, it.endTime) >= MIN_SESSION_DURATION }
 
         var pushed = 0
@@ -140,3 +146,18 @@ class GymSessionBridge(private val context: Context) {
 }
 
 data class BridgeOutcome(val pushed: Int, val skipped: Int)
+
+internal data class BridgeRecord(val uid: String, val start: Instant, val end: Instant, val type: Int)
+
+/**
+ * Which Health Connect sessions still need pushing. Google Fit sometimes writes
+ * one walk twice (same start, a new id, sometimes a later end), and the
+ * id-only dedupe pushed both: 30 Oct had two pairs. Records sharing a start
+ * and an exercise type are one session: none is pushed if any of them already
+ * was, otherwise only the longest.
+ */
+internal fun sessionsToPush(records: List<BridgeRecord>, alreadyPushed: Set<String>): List<BridgeRecord> =
+    records.groupBy { it.start to it.type }.values.mapNotNull { group ->
+        if (group.any { it.uid in alreadyPushed }) null else group.maxByOrNull { it.end }
+    }
+
