@@ -44,7 +44,14 @@ class GeofenceReceiver : BroadcastReceiver() {
         val now = System.currentTimeMillis()
         val transition = event.geofenceTransition
         val configured = PlaceGeofence.configured().associateBy { it.requestId }
-        val fences = event.triggeringGeofences.orEmpty().mapNotNull { configured[it.requestId] }
+        val triggered = event.triggeringGeofences.orEmpty().mapNotNull { configured[it.requestId] }
+        // One enter, dwell and exit per visit: Android repeats them on every re-registration (PlaceVisits).
+        val fences = triggered.filter { fence ->
+            val decision = PlaceVisits.decide(transition, PlaceVisits.load(context, fence.id), now)
+            PlaceVisits.save(context, fence.id, decision.next)
+            if (!decision.record) Log.d(TAG, "Dropped repeat transition $transition for ${fence.id}")
+            decision.record
+        }
         if (fences.isEmpty()) return
 
         when (transition) {
