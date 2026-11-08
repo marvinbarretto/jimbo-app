@@ -29,6 +29,8 @@ adb logcat -s JimboBridge        # bridge registration log tag
 
 `android/local.properties` provides `jimbo.api.url`, `jimbo.api.key`, `jimbo.device.id` — read into BuildConfig from `android/app/build.gradle`. Not committed.
 
+Walk mode (`walk/`, HW-7852): `jimbo.walk.spots=id|lat,lng|clip;id|lat,lng|clip;…` in `android/local.properties` (same `;` and `|` as `jimbo.places`). A debug build with spots set posts a silent "Walk mode" notification when the app opens; its **Start walk** action starts `WalkSessionService` (location foreground service, fused fixes every 3 s), and the running notification's **Stop walk** ends it. Within 30 m each spot plays once per walk under transient audio focus (your podcast pauses, then resumes). A clip is a file named `clip` (any extension) pushed to `/sdcard/Android/data/dev.marvinbarretto.jimbo/files/walk/`; with no file it speaks a placeholder. Events: collector `walk` (`walk.start`, `walk.trigger` with spot + distance, `walk.stop`). Log tag `JimboWalk`.
+
 ## Native architecture
 
 Entry point: `MainActivity.kt` extends `BridgeActivity`. On launch it registers Capacitor plugins, attaches `BridgeRegistry`, kicks WorkManager (periodic + one manual run), then requests runtime perms.

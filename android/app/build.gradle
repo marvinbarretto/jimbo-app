@@ -37,6 +37,9 @@ android {
         // place/PlaceGeofence.kt). Quotes and backslashes are dropped so a label
         // can never break the generated Java string.
         buildConfigField "String", "JIMBO_PLACES", "\"${localProps.getProperty('jimbo.places', '').replaceAll('["\\\\]', '')}\""
+        // Walk mode spots, "id|lat,lng|clip" joined by ";" like jimbo.places (see
+        // walk/WalkSpot.kt). Blank = walk mode off. Same quote/backslash strip.
+        buildConfigField "String", "JIMBO_WALK_SPOTS", "\"${localProps.getProperty('jimbo.walk.spots', '').replaceAll('["\\\\]', '')}\""
         // LocalShout screen-capture ingest. Blank by default: ScreenSyncWorker
         // no-ops when unset, so a build without these still runs — it just never
         // sends. Set localshout.ingest.url / localshout.screen.key to enable.

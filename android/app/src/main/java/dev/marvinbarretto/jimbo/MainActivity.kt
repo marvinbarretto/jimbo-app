@@ -20,6 +20,7 @@ import dev.marvinbarretto.jimbo.plugins.LocationContextPlugin
 import dev.marvinbarretto.jimbo.plugins.NotificationTriggerPlugin
 import dev.marvinbarretto.jimbo.plugins.TelemetryPlugin
 import dev.marvinbarretto.jimbo.plugins.UsageSlicePlugin
+import dev.marvinbarretto.jimbo.walk.WalkNotifications
 
 class MainActivity : BridgeActivity() {
 
@@ -60,6 +61,8 @@ class MainActivity : BridgeActivity() {
         registerNotificationDeepLink()
         handleNotificationIntent(intent)
         permissions.requestIfNeeded()
+        // Debug builds with jimbo.walk.spots set: the "Start walk" notification.
+        WalkNotifications.showIdle(this)
     }
 
     override fun onNewIntent(intent: Intent) {

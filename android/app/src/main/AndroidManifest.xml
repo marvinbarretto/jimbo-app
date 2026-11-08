@@ -22,6 +22,11 @@
          is granted — Android 11+ rejects requesting both in the same call. -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Walk mode (walk/WalkSessionService): a location foreground service, started
+         by hand from its debug notification, that streams fused location and
+         holds audio focus while a spot's clip plays. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Lets BatteryUsageCollector read the dumpsys batterystats usage report (per-app mAh,
@@ -121,6 +126,11 @@
         <receiver
             android:name=".nudge.FoodReplyReceiver"
             android:exported="false" />
+
+        <service
+            android:name=".walk.WalkSessionService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <service
             android:name=".NotificationCollectorService"
