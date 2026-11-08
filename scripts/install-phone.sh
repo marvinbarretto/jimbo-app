@@ -32,4 +32,9 @@ if ! $LIVE; then
   exit 0
 fi
 adb install -r "$APK"
+# BatteryUsageCollector reads dumpsys batterystats, which checks DUMP and
+# PACKAGE_USAGE_STATS as permissions (the Usage Access toggle is an app-op and
+# does not count). Both are development permissions only adb can grant. Idempotent.
+adb shell pm grant dev.marvinbarretto.jimbo android.permission.DUMP
+adb shell pm grant dev.marvinbarretto.jimbo android.permission.PACKAGE_USAGE_STATS
 echo "installed; app/build removed. Sync logs: adb logcat -s JimboSync"
