@@ -31,6 +31,7 @@ class BootReceiver : BroadcastReceiver() {
 
         if (hasPermission(context, Manifest.permission.ACTIVITY_RECOGNITION)) {
             ActivityRecognitionManager.register(context)
+            SleepManager.register(context)
         }
 
         if (hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) &&

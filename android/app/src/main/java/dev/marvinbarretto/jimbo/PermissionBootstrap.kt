@@ -36,6 +36,7 @@ class PermissionBootstrap(private val activity: ComponentActivity) {
     ) { grants ->
         if (grants[Manifest.permission.ACTIVITY_RECOGNITION] == true) {
             ActivityRecognitionManager.register(activity)
+            SleepManager.register(activity)
         }
         if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true && !hasBackgroundLocation()) {
             requestBackgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)

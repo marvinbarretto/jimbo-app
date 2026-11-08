@@ -20,6 +20,7 @@ class JimboApplication : Application() {
         // The PendingIntent key is stable so Play Services deduplicates.
         if (hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
             ActivityRecognitionManager.register(this)
+            SleepManager.register(this)
         }
         if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
             hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {

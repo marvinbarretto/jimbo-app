@@ -99,6 +99,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".SleepReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".LocationUpdateReceiver"
             android:exported="false" />
 
