@@ -13,6 +13,7 @@ object NotificationChannels {
     const val NUDGES = "nudges"
     const val GYM = "gym"
     const val FOCUS = "focus"
+    const val PLACES = "places"
 
     fun ensureCreated(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -21,6 +22,7 @@ object NotificationChannels {
                 NotificationChannel(BRIEFING, "Briefing", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(NUDGES, "Nudges", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(GYM, "Gym", NotificationManager.IMPORTANCE_DEFAULT),
+                NotificationChannel(PLACES, "Places", NotificationManager.IMPORTANCE_DEFAULT),
                 // High importance + vibration: a finished block is meant to be felt, not just seen.
                 NotificationChannel(FOCUS, "Focus", NotificationManager.IMPORTANCE_HIGH).apply {
                     enableVibration(true)
@@ -31,5 +33,5 @@ object NotificationChannels {
     }
 
     fun resolve(requested: String?): String =
-        if (requested in setOf(BRIEFING, NUDGES, GYM, FOCUS)) requested!! else NUDGES
+        if (requested in setOf(BRIEFING, NUDGES, GYM, FOCUS, PLACES)) requested!! else NUDGES
 }

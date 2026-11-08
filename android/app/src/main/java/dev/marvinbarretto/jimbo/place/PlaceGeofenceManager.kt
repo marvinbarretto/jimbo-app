@@ -14,8 +14,11 @@ import com.google.android.gms.location.LocationServices
 
 private const val TAG = "JimboSync"
 
+/** How long inside a fence counts as being there rather than passing by. */
+private const val LOITERING_MS = 3 * 60 * 1000
+
 /**
- * Registers the home/gym geofences. Transitions only — no GPS stream. Play
+ * Registers the configured place geofences (PlaceGeofence.configured). Transitions only — no GPS stream. Play
  * Services drops geofences on reboot and package replacement, so callers
  * re-arm from the same places as JimboLocationManager.register.
  */
@@ -45,7 +48,13 @@ object PlaceGeofenceManager {
         Geofence.Builder()
             .setRequestId(requestId)
             .setCircularRegion(latitude, longitude, radiusMetres)
-            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
+            // DWELL fires once you have stayed LOITERING_MS inside: the trigger for a
+            // place's notification, so walking past one does not count as a visit.
+            .setTransitionTypes(
+                Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT or
+                    Geofence.GEOFENCE_TRANSITION_DWELL
+            )
+            .setLoiteringDelay(LOITERING_MS)
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .build()
 

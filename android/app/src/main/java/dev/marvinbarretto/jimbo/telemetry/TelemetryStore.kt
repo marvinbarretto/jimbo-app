@@ -21,7 +21,8 @@ class TelemetryStore(private val context: Context) {
             NotificationCollector(),
             ActivityRecognitionCollector(),
             MediaCollector(),
-            LocationCollector()
+            LocationCollector(),
+            PlaceCollector()
         )
     )
 

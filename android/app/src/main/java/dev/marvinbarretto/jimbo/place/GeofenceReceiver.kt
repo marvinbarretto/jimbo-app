@@ -15,6 +15,10 @@ import com.google.android.gms.location.GeofencingEvent
 import dev.marvinbarretto.jimbo.MainActivity
 import dev.marvinbarretto.jimbo.NotificationChannels
 import dev.marvinbarretto.jimbo.NotificationTriggerReceiver
+import dev.marvinbarretto.jimbo.data.StepsDatabase
+import dev.marvinbarretto.jimbo.telemetry.PlaceCollector
+import dev.marvinbarretto.jimbo.telemetry.RawEvent
+import dev.marvinbarretto.jimbo.telemetry.toEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,8 +27,11 @@ import java.time.Instant
 private const val TAG = "JimboSync"
 
 /**
- * Turns geofence transitions into the current named place and, on gym entry,
- * the one-tap "start a session?" notification. Never starts a session itself.
+ * Turns geofence transitions into three things: a `place` telemetry event for
+ * every enter, dwell and exit (the place's id only, never coordinates); the
+ * current named place for the /m shell; and a notification, either the gym's
+ * one-tap "start a session?" on entry, or "At <label>" once you have stayed at
+ * a labelled place. Never starts a session itself.
  */
 class GeofenceReceiver : BroadcastReceiver() {
 
@@ -35,30 +42,83 @@ class GeofenceReceiver : BroadcastReceiver() {
             return
         }
         val now = System.currentTimeMillis()
-        val fences = event.triggeringGeofences.orEmpty()
+        val transition = event.geofenceTransition
+        val configured = PlaceGeofence.configured().associateBy { it.requestId }
+        val fences = event.triggeringGeofences.orEmpty().mapNotNull { configured[it.requestId] }
+        if (fences.isEmpty()) return
 
-        when (event.geofenceTransition) {
+        when (transition) {
             Geofence.GEOFENCE_TRANSITION_EXIT ->
-                if (fences.any { PlaceGeofence.placeForRequestId(it.requestId) == PlaceStateStore.current(context).first }) {
+                if (fences.any { it.place != Place.OTHER && it.place == PlaceStateStore.current(context).first }) {
                     PlaceStateStore.set(context, Place.OTHER, now)
                 }
-            Geofence.GEOFENCE_TRANSITION_ENTER -> {
-                val place = fences.firstNotNullOfOrNull { PlaceGeofence.placeForRequestId(it.requestId) } ?: return
-                PlaceStateStore.set(context, place, now)
-                if (place == Place.GYM) {
-                    val pending = goAsync()
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            offerSessionStart(context)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Gym arrival check failed", e)
-                        } finally {
-                            pending.finish()
-                        }
-                    }
+            Geofence.GEOFENCE_TRANSITION_ENTER ->
+                fences.firstOrNull { it.place != Place.OTHER }?.let { PlaceStateStore.set(context, it.place, now) }
+        }
+
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                recordTransitions(context, fences, transition, Instant.ofEpochMilli(now))
+                if (transition == Geofence.GEOFENCE_TRANSITION_ENTER && fences.any { it.place == Place.GYM }) {
+                    offerSessionStart(context)
                 }
+                if (transition == Geofence.GEOFENCE_TRANSITION_DWELL) {
+                    fences.filter { it.notifiesOnDwell }.forEach { notifyArrival(context, it, now) }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Geofence handling failed", e)
+            } finally {
+                pending.finish()
             }
         }
+    }
+
+    private suspend fun recordTransitions(context: Context, fences: List<PlaceGeofence>, transition: Int, at: Instant) {
+        val type = when (transition) {
+            Geofence.GEOFENCE_TRANSITION_ENTER -> "place.enter"
+            Geofence.GEOFENCE_TRANSITION_EXIT -> "place.exit"
+            Geofence.GEOFENCE_TRANSITION_DWELL -> "place.dwell"
+            else -> return
+        }
+        val database = StepsDatabase.getInstance(context)
+        // An unseeded setting row (before the first sync) means the collector's default: on.
+        if (database.collectorSettingDao().isEnabled(PlaceCollector.ID) == false) return
+        val events = fences.map { fence ->
+            RawEvent(
+                collector = PlaceCollector.ID,
+                type = type,
+                ts = at,
+                payload = mapOf("place" to fence.id, "radius_m" to fence.radiusMetres.toDouble()),
+            )
+        }
+        database.eventDao().insertAll(events.map { it.toEntity() })
+        Log.d(TAG, "Recorded $type for ${fences.map { it.id }}")
+    }
+
+    private fun notifyArrival(context: Context, fence: PlaceGeofence, now: Long) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
+        NotificationChannels.ensureCreated(context)
+        val since = java.time.LocalTime.now().minusMinutes(3).withSecond(0).withNano(0)
+        val tap = PendingIntent.getActivity(
+            context,
+            fence.id.hashCode(),
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(context, NotificationChannels.PLACES)
+            .setSmallIcon(android.R.drawable.ic_dialog_map)
+            .setContentTitle("At ${fence.label}")
+            .setContentText("Here since about $since. Jimbo logged the visit.")
+            .setContentIntent(tap)
+            .setAutoCancel(true)
+            .setWhen(now)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(PLACE_NOTIFICATION_BASE + (fence.id.hashCode() and 0xffff), notification)
     }
 
     private fun offerSessionStart(context: Context) {
@@ -93,5 +153,6 @@ class GeofenceReceiver : BroadcastReceiver() {
         /** Set on the tap intent; MainActivity starts a session before opening /m/train. */
         const val EXTRA_START_SESSION = "jimbo_start_gym_session"
         private const val NOTIFICATION_ID = 0x6a796d
+        private const val PLACE_NOTIFICATION_BASE = 0x706c0000
     }
 }

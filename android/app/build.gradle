@@ -33,6 +33,10 @@ android {
         // Geofenced places as "lat,lng[,radiusMetres]". Blank = not fenced.
         buildConfigField "String", "JIMBO_PLACE_HOME", "\"${localProps.getProperty('jimbo.place.home', '')}\""
         buildConfigField "String", "JIMBO_PLACE_GYM", "\"${localProps.getProperty('jimbo.place.gym', '')}\""
+        // The place list, "id|lat,lng[,radiusMetres]|label" joined by ";" (see
+        // place/PlaceGeofence.kt). Quotes and backslashes are dropped so a label
+        // can never break the generated Java string.
+        buildConfigField "String", "JIMBO_PLACES", "\"${localProps.getProperty('jimbo.places', '').replaceAll('["\\\\]', '')}\""
         // LocalShout screen-capture ingest. Blank by default: ScreenSyncWorker
         // no-ops when unset, so a build without these still runs — it just never
         // sends. Set localshout.ingest.url / localshout.screen.key to enable.
