@@ -18,6 +18,8 @@ class WalkChoice(
     private val record: (choice: String, clip: String, reason: String?) -> Unit,
     /** The offer opened or closed: the notification redraws. */
     private val changed: () -> Unit = {},
+    /** Skip was tapped: hand back the focus WalkAudio kept through the offer (walk 3). */
+    private val release: () -> Unit = {},
 ) {
     /** The short clip whose longer telling is on offer, if any. */
     var offered: String? = null
@@ -39,7 +41,11 @@ class WalkChoice(
     }
 
     /** Skip: declines the offer. False when nothing is on offer. */
-    fun decline(): Boolean = close("declined", null) != null
+    fun decline(): Boolean {
+        if (close("declined", null) == null) return false
+        release()
+        return true
+    }
 
     /** The walk stopped. */
     fun end() {

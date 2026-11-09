@@ -33,13 +33,15 @@ private const val TAG = "JimboWalk"
  * what makes the audio focus request legal (Android 15 grants focus only to
  * the top app or a foreground service). Started and stopped from a debug
  * notification (WalkNotifications); nothing else starts it. The running
- * notification also carries the clip controls and the More offer (walk 2).
+ * notification also carries the clip controls and the More offer (walk 2),
+ * and, once the last spot's clip has ended, "End walk?" (walk 3).
  */
 class WalkSessionService : Service() {
     private var session: WalkSession? = null
     private var player: AndroidWalkClipPlayer? = null
     private var audio: WalkAudio? = null
     private var choice: WalkChoice? = null
+    private var ending: WalkEnding? = null
     private var spotCount = 0
     private var lastSpot: String? = null
     private val main = Handler(Looper.getMainLooper())
@@ -64,7 +66,8 @@ class WalkSessionService : Service() {
             action == ACTION_SKIP -> control { it.skip() }
             action == ACTION_MORE -> { choice?.take(); refresh() }
             action == ACTION_DECLINE -> { choice?.decline(); refresh() }
-            else -> stopWalk()
+            action == ACTION_END -> stopWalk(WalkEnding.END_PROMPT)
+            else -> stopWalk(WalkEnding.USER)
         }
         return START_NOT_STICKY
     }
@@ -102,13 +105,23 @@ class WalkSessionService : Service() {
                 sink.record(WalkCollector.media(walk, point, clip, snapshot, Instant.now()))
             },
         )
-        val walkAudio = WalkAudio(AndroidWalkAudioFocus(this), clipPlayer, schedule = schedule, step = { step ->
-            Log.d(TAG, "Audio ${step.phase} ${step.clip ?: ""} ${step.kind ?: ""}")
-            sink.record(WalkCollector.audio(session?.currentWalkId, step.phase, step.clip, Instant.now(), step.kind))
-            media.onStep(step.phase, step.clip)
-            choice?.onStep(step.phase, step.clip)
-            refresh()
-        })
+        val walkAudio = WalkAudio(
+            AndroidWalkAudioFocus(this), clipPlayer, schedule = schedule,
+            step = { step ->
+                Log.d(TAG, "Audio ${step.phase} ${step.clip ?: ""} ${step.kind ?: ""} ${step.reason ?: ""}")
+                sink.record(
+                    WalkCollector.audio(session?.currentWalkId, step.phase, step.clip, Instant.now(), step.kind, step.reason),
+                )
+                media.onStep(step.phase, step.clip)
+                choice?.onStep(step.phase, step.clip)
+                ending?.onStep(step.phase, step.clip)
+                refresh()
+            },
+            // Keep focus through the More offer (walk 3): the same test WalkChoice offers on.
+            holdAfter = { clip ->
+                !clip.endsWith(WalkChoice.MORE_SUFFIX) && clipPlayer.hasClip(clip + WalkChoice.MORE_SUFFIX)
+            },
+        )
         audio = walkAudio
         choice = WalkChoice(
             hasClip = clipPlayer::hasClip,
@@ -117,6 +130,17 @@ class WalkSessionService : Service() {
             record = { what, clip, reason ->
                 Log.d(TAG, "More $what for $clip ${reason ?: ""}")
                 sink.record(WalkCollector.choice(session?.currentWalkId, what, clip, reason, Instant.now()))
+            },
+            changed = ::refresh,
+            release = { walkAudio.releaseHold("declined") },
+        )
+        ending = WalkEnding(
+            schedule = schedule,
+            finished = { session?.finished == true },
+            offerOpen = { choice?.offered != null },
+            stop = { reason ->
+                Log.d(TAG, "Walk ending: $reason")
+                stopWalk(reason)
             },
             changed = ::refresh,
         )
@@ -155,6 +179,7 @@ class WalkSessionService : Service() {
             playing = walkAudio?.nowPlaying,
             paused = walkAudio?.isPaused == true,
             offer = choice?.offered,
+            ending = ending?.prompting == true,
         )
         getSystemService(NotificationManager::class.java).notify(
             WalkNotifications.RUNNING_ID,
@@ -181,11 +206,13 @@ class WalkSessionService : Service() {
         WalkMediaSnapshot(emptyList(), error = "failed: ${e.javaClass.simpleName}")
     }
 
-    private fun stopWalk() {
-        session?.let { Log.d(TAG, "Walk stopped, ${it.triggered} spots reached") }
+    private fun stopWalk(reason: String = WalkEnding.USER) {
+        session?.let { Log.d(TAG, "Walk stopped ($reason), ${it.triggered} spots reached") }
+        ending?.cancel()
+        ending = null
         choice?.end()
         choice = null
-        session?.stop()
+        session?.stop(reason)
         session = null
         audio = null
         player?.shutdown()
@@ -196,9 +223,12 @@ class WalkSessionService : Service() {
     }
 
     override fun onDestroy() {
+        ending?.cancel()
+        ending = null
         choice?.end()
         choice = null
-        session?.stop()
+        // Destroyed without a Stop (the system ended the service): walk.stop carries no reason.
+        session?.stop(null)
         session = null
         audio = null
         player?.shutdown()
@@ -223,7 +253,8 @@ class WalkSessionService : Service() {
         const val ACTION_SKIP = "dev.marvinbarretto.jimbo.walk.SKIP"
         const val ACTION_MORE = "dev.marvinbarretto.jimbo.walk.MORE"
         const val ACTION_DECLINE = "dev.marvinbarretto.jimbo.walk.DECLINE"
-        private val CONTROLS = setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_BACK, ACTION_SKIP, ACTION_MORE, ACTION_DECLINE)
+        const val ACTION_END = "dev.marvinbarretto.jimbo.walk.END"
+        private val CONTROLS = setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_BACK, ACTION_SKIP, ACTION_MORE, ACTION_DECLINE, ACTION_END)
     }
 }
 
@@ -259,13 +290,19 @@ object WalkNotifications {
         context.getSystemService(NotificationManager::class.java).notify(IDLE_ID, notification)
     }
 
-    /** What the running notification shows besides the tally: a clip playing or paused, or a More offer. */
-    data class State(val playing: String? = null, val paused: Boolean = false, val offer: String? = null)
+    /** What the running notification shows besides the tally: a clip playing or paused, a More offer, or the walk's end. */
+    data class State(
+        val playing: String? = null,
+        val paused: Boolean = false,
+        val offer: String? = null,
+        val ending: Boolean = false,
+    )
 
     /**
      * The running notification. Android shows three actions, so: during a
      * clip, Pause or Resume, Back 10 s and Skip; during a More offer, More,
-     * Skip and Stop walk; otherwise Stop walk.
+     * Skip and Stop walk; after the last spot's clip, End walk (it stops by
+     * itself 10 minutes later); otherwise Stop walk.
      */
     fun running(context: Context, spotCount: Int, reached: Int, last: String?, state: State = State()): Notification {
         NotificationChannels.ensureCreated(context)
@@ -289,6 +326,10 @@ object WalkNotifications {
                 .addAction(0, "More", action(context, WalkSessionService.ACTION_MORE, 5))
                 .addAction(0, "Skip", action(context, WalkSessionService.ACTION_DECLINE, 6))
                 .addAction(0, "Stop walk", action(context, WalkSessionService.ACTION_STOP, 0))
+            state.ending -> builder
+                .setContentTitle("Last spot done. End walk?")
+                .setContentText("Stops by itself 10 min after the last story. $tally")
+                .addAction(0, "End walk", action(context, WalkSessionService.ACTION_END, 7))
             else -> builder
                 .setContentTitle("Walk on")
                 .setContentText(tally)

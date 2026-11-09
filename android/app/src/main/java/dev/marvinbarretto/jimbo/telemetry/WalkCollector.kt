@@ -43,21 +43,30 @@ class WalkCollector : Collector {
             payload = mapOf("walk" to walkId, "spots" to spotCount),
         )
 
-        fun stopped(walkId: String, triggered: Int, at: Instant): RawEvent = RawEvent(
+        /** The walk ended: spots reached, and how ([reason]: user, end_prompt, auto_after_last; absent when the service died). */
+        fun stopped(walkId: String, triggered: Int, at: Instant, reason: String? = null): RawEvent = RawEvent(
             collector = ID,
             type = "walk.stop",
             ts = at,
-            payload = mapOf("walk" to walkId, "triggered" to triggered),
+            payload = buildMap {
+                put("walk", walkId)
+                put("triggered", triggered)
+                if (reason != null) put("reason", reason)
+            },
         )
 
         // Diagnostics (walk.fix / walk.audio / walk.summary, and since walk 2 walk.choice /
         // walk.control / walk.media): enough to explain a
         // walk afterwards, such as a spot that stayed silent. Still never coordinates.
 
-        /** One location fix: the nearest spot not yet played, how far, how sure, the gap since the last fix. */
+        /**
+         * One location fix: the nearest spot not yet played, how far, how sure, the gap since the last fix,
+         * and (walk 3) the next spot in walk order not yet played and how far, so a skipped spot shows.
+         */
         fun fix(
             walkId: String, accuracyMetres: Float?, nearestSpot: String?, nearestMetres: Double?,
             gapSeconds: Double?, ignored: Boolean, at: Instant,
+            nextSpot: String? = null, nextMetres: Double? = null,
         ): RawEvent = RawEvent(
             collector = ID,
             type = "walk.fix",
@@ -69,14 +78,28 @@ class WalkCollector : Collector {
                 if (nearestMetres != null) put("nearest_m", tenths(nearestMetres))
                 if (gapSeconds != null) put("gap_s", tenths(gapSeconds))
                 if (ignored) put("ignored", true)
+                if (nextSpot != null) put("next", nextSpot)
+                if (nextMetres != null) put("next_m", tenths(nextMetres))
             },
+        )
+
+        /** A spot passed over: a later spot in walk order fired while this one had not. Once per spot per walk. */
+        fun skip(walkId: String, spot: String, at: Instant): RawEvent = RawEvent(
+            collector = ID,
+            type = "walk.skip",
+            ts = at,
+            payload = mapOf("walk" to walkId, "spot" to spot),
         )
 
         /**
          * One audio step (WalkAudio's phases: focus_granted, clip_start, clip_end, focus_abandoned, ...).
          * [kind] on focus_lost says which loss: transient (paused), permanent (stopped) or duck (played on).
+         * [reason] on hold_released says why the More hold ended (more, next_clip, declined, timeout,
+         * walk_stopped, focus_lost).
          */
-        fun audio(walkId: String?, phase: String, clip: String?, at: Instant, kind: String? = null): RawEvent = RawEvent(
+        fun audio(
+            walkId: String?, phase: String, clip: String?, at: Instant, kind: String? = null, reason: String? = null,
+        ): RawEvent = RawEvent(
             collector = ID,
             type = "walk.audio",
             ts = at,
@@ -85,6 +108,7 @@ class WalkCollector : Collector {
                 put("phase", phase)
                 if (clip != null) put("clip", clip)
                 if (kind != null) put("kind", kind)
+                if (reason != null) put("reason", reason)
             },
         )
 
@@ -132,10 +156,14 @@ class WalkCollector : Collector {
             },
         )
 
-        /** At stop: how many fixes came, how many were too vague, the longest silence between fixes, battery. */
+        /**
+         * At stop: how many fixes came, how many were too vague, the longest silence between fixes, battery,
+         * and how long the walk ran past its last trigger (absent when nothing fired).
+         */
         fun summary(
             walkId: String, fixes: Int, ignored: Int, maxGapSeconds: Double?,
             batteryStart: Int?, batteryEnd: Int?, at: Instant,
+            secondsAfterLastTrigger: Double? = null,
         ): RawEvent = RawEvent(
             collector = ID,
             type = "walk.summary",
@@ -147,6 +175,7 @@ class WalkCollector : Collector {
                 if (maxGapSeconds != null) put("max_gap_s", tenths(maxGapSeconds))
                 if (batteryStart != null) put("battery_start", batteryStart)
                 if (batteryEnd != null) put("battery_end", batteryEnd)
+                if (secondsAfterLastTrigger != null) put("seconds_after_last_trigger", tenths(secondsAfterLastTrigger))
             },
         )
 

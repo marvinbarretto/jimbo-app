@@ -42,8 +42,11 @@ fun interface WalkSchedule {
     fun after(delayMs: Long, action: () -> Unit): () -> Unit
 }
 
-/** One audio step for walk.audio; [kind] says which focus loss (transient, permanent, duck). */
-data class WalkAudioStep(val phase: String, val clip: String?, val kind: String? = null)
+/**
+ * One audio step for walk.audio; [kind] says which focus loss (transient, permanent, duck), and
+ * [reason] why a More hold ended (more, next_clip, declined, timeout, walk_stopped, focus_lost).
+ */
+data class WalkAudioStep(val phase: String, val clip: String?, val kind: String? = null, val reason: String? = null)
 
 /** A notification control as walk.control records it: [applied] is false when nothing was playing. */
 data class WalkControl(val action: String, val clip: String?, val positionSeconds: Double?, val applied: Boolean)
@@ -66,6 +69,13 @@ data class WalkControl(val action: String, val clip: String?, val positionSecond
  * forgotten pause never silences the podcast for the rest of the walk. Back
  * moves 10 s back. Skip ends the clip and moves on to a waiting one, or
  * hands focus back.
+ *
+ * The More hold (walk 3): when a clip that has a longer telling ([holdAfter])
+ * ends by itself, focus is kept, in silence, for [HOLD_MS] while More is on
+ * offer, so the podcast does not resume and pause again when More is tapped.
+ * The next clip played (More, or another spot) takes the held focus without a
+ * new request; Skip ([releaseHold]), the timeout, a stop or a focus loss hand
+ * it back. Recorded as focus_held, then hold_released with its reason.
  */
 class WalkAudio(
     private val focus: WalkAudioFocus,
@@ -75,6 +85,8 @@ class WalkAudio(
     private val schedule: WalkSchedule = WalkSchedule { _, _ -> {} },
     /** The same steps with the focus-loss kind: what the service records. */
     private val step: (WalkAudioStep) -> Unit = {},
+    /** True for a clip whose end opens a More offer: focus is held for it. Off by default. */
+    private val holdAfter: (clip: String) -> Boolean = { false },
 ) : WalkPlayback {
     private val queue = ArrayDeque<String>()
     private var current: String? = null
@@ -83,6 +95,9 @@ class WalkAudio(
     private var userPaused = false
     private var focusPaused = false
     private var cancelHold: (() -> Unit)? = null
+    // The More hold: the short clip whose focus is kept, and its timer.
+    private var heldFor: String? = null
+    private var cancelFocusHold: (() -> Unit)? = null
 
     /** The clip playing or paused, if any. */
     val nowPlaying: String? get() = current
@@ -90,18 +105,51 @@ class WalkAudio(
     /** True while the walker has the clip paused. */
     val isPaused: Boolean get() = userPaused
 
+    /** True while focus is kept, in silence, through a More offer. */
+    val isHolding: Boolean get() = heldFor != null
+
     override fun play(clip: String) {
         queue.addLast(clip)
-        if (current != null) emit("queued", clip) else startNext(needFocus = true)
+        when {
+            current != null -> emit("queued", clip)
+            heldFor != null -> {
+                val held = endHold()
+                emit("hold_released", held, reason = if (clip == held + MORE_SUFFIX) "more" else "next_clip")
+                startNext(needFocus = false)
+            }
+            else -> startNext(needFocus = true)
+        }
     }
 
-    override fun stop() {
+    override fun stop() = stopWith("walk_stopped")
+
+    /** Hands held focus back at once (Skip on the More offer); nothing when no hold is on. */
+    fun releaseHold(reason: String) {
+        val held = endHold() ?: return
+        emit("hold_released", held, reason = reason)
+        focus.abandon()
+        emit("focus_abandoned", null)
+    }
+
+    private fun stopWith(holdReason: String) {
         queue.clear()
+        if (heldFor != null) {
+            releaseHold(holdReason)
+            return
+        }
         if (current == null) return
         endClip()
         player.stop()
         focus.abandon()
         emit("focus_abandoned", null)
+    }
+
+    private fun endHold(): String? {
+        val held = heldFor ?: return null
+        heldFor = null
+        cancelFocusHold?.invoke()
+        cancelFocusHold = null
+        return held
     }
 
     fun pause(): WalkControl {
@@ -153,9 +201,9 @@ class WalkAudio(
     private fun control(action: String, clip: String, applied: Boolean) =
         WalkControl(action, clip, player.positionMs()?.let { Math.round(it / 100.0) / 10.0 }, applied)
 
-    private fun emit(phase: String, clip: String?, kind: String? = null) {
+    private fun emit(phase: String, clip: String?, kind: String? = null, reason: String? = null) {
         report(phase, clip)
-        step(WalkAudioStep(phase, clip, kind))
+        step(WalkAudioStep(phase, clip, kind, reason))
     }
 
     private fun startNext(needFocus: Boolean) {
@@ -174,17 +222,26 @@ class WalkAudio(
         emit("clip_start", clip)
         player.play(
             clip,
-            onDone = { if (mine == generation) { emit("clip_end", clip); onClipEnd() } },
+            onDone = { if (mine == generation) { emit("clip_end", clip); onClipEnd(ended = clip) } },
             onError = { if (mine == generation) { emit("clip_error", clip); onClipEnd() } },
         )
     }
 
     private fun onFocusLost() {
-        emit("focus_lost", current, kind = "permanent")
-        stop()
+        emit("focus_lost", current ?: heldFor, kind = "permanent")
+        stopWith("focus_lost")
     }
 
     private fun onFocusChange(change: FocusChange) {
+        val held = heldFor
+        if (held != null) {
+            // Nothing plays during the hold: a brief loss gives it up, so More asks again.
+            if (change == FocusChange.LOSS_TRANSIENT) {
+                emit("focus_lost", held, kind = "transient")
+                releaseHold("focus_lost")
+            }
+            return
+        }
         val clip = current ?: return
         when (change) {
             FocusChange.DUCK -> emit("focus_lost", clip, kind = "duck")
@@ -213,13 +270,24 @@ class WalkAudio(
         cancelHold = null
     }
 
-    private fun onClipEnd() {
+    /** [ended] is the clip that finished by itself; a skipped, failed or expired clip passes null. */
+    private fun onClipEnd(ended: String? = null) {
         endClip()
-        if (queue.isEmpty()) {
-            focus.abandon()
-            emit("focus_abandoned", null)
-        } else {
-            startNext(needFocus = false)
+        when {
+            queue.isNotEmpty() -> startNext(needFocus = false)
+            ended != null && holdAfter(ended) -> hold(ended)
+            else -> {
+                focus.abandon()
+                emit("focus_abandoned", null)
+            }
+        }
+    }
+
+    private fun hold(clip: String) {
+        heldFor = clip
+        emit("focus_held", clip)
+        cancelFocusHold = schedule.after(HOLD_MS) {
+            if (heldFor == clip) releaseHold("timeout")
         }
     }
 
@@ -227,5 +295,8 @@ class WalkAudio(
         /** How long Pause holds focus before the clip ends and the podcast comes back. */
         const val PAUSE_HOLD_MS = 60_000L
         const val BACK_MS = 10_000
+        /** How long focus is kept after a clip whose More is on offer: walk 2's takes came within 12 s. */
+        const val HOLD_MS = 15_000L
+        private const val MORE_SUFFIX = WalkChoice.MORE_SUFFIX
     }
 }
