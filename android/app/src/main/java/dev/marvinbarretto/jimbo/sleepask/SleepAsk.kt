@@ -29,12 +29,13 @@ private const val TAG = "JimboSleepAsk"
 private const val PREFS = "sleep_ask"
 
 /**
- * Asks Marvin, on the first unlock after a long phone-down stretch, whether he
- * was asleep and when. His answers are the ground truth the sleep-metric
- * project scores every source against (SM-7959). Events, collector `sleep`:
- * `sleep.ask` when the question is posted, `sleep.label` with his answer
- * (kind slept or not_asleep, his words verbatim), `sleep.ask_dismissed` when
- * swiped away. Each carries the phone-down stretch the phone saw.
+ * Asks Marvin "were you asleep?" once per night, covering the whole night
+ * (see Night). His answers are the ground truth the sleep-metric project
+ * scores every source against (SM-7959). Events, collector `sleep`, source
+ * `sleep_ask`: `sleep.ask` each time the question is posted or refreshed,
+ * `sleep.label` with his answer (kind slept or not_asleep, his words
+ * verbatim), `sleep.ask_hidden` for Later or a swipe, `sleep.ask_expired` for
+ * a night never answered. Each carries the night's phone-down stretches.
  *
  * USER_PRESENT and SCREEN_OFF only reach runtime receivers, so this registers
  * for the life of the process (kept alive by the notification listener), like
@@ -44,11 +45,10 @@ object SleepAsk {
     const val KEY_REPLY = "jimbo_sleep_reply"
     const val ACTION_REPLY = "dev.marvinbarretto.jimbo.SLEEP_REPLY"
     const val ACTION_NOT_ASLEEP = "dev.marvinbarretto.jimbo.SLEEP_NOT_ASLEEP"
+    const val ACTION_LATER = "dev.marvinbarretto.jimbo.SLEEP_LATER"
     const val ACTION_DISMISSED = "dev.marvinbarretto.jimbo.SLEEP_DISMISSED"
-    const val EXTRA_ASKED_AT = "asked_at"
-    const val EXTRA_DOWN_FROM = "down_from"
-    const val EXTRA_DOWN_UNTIL = "down_until"
     private const val NOTIFICATION_ID = 0x51ee9
+    private val hhmm = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
 
     @Volatile private var registered = false
 
@@ -76,38 +76,60 @@ object SleepAsk {
         )
     }
 
-    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    // ── State, in shared prefs so a process restart keeps the night ──────────
 
-    private fun readState(context: Context): PhoneDownState {
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private fun instant(ms: Long) = ms.takeIf { it > 0 }?.let(Instant::ofEpochMilli)
+
+    private fun readPhone(context: Context): PhoneDownState {
         val p = prefs(context)
-        val since = p.getLong("down_since", 0L).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
-        return PhoneDownState(unlocked = p.getBoolean("unlocked", true), downSince = since)
+        return PhoneDownState(unlocked = p.getBoolean("unlocked", true), downSince = instant(p.getLong("down_since", 0L)))
     }
 
-    private fun writeState(context: Context, state: PhoneDownState) {
+    private fun writePhone(context: Context, s: PhoneDownState) {
+        prefs(context).edit().putBoolean("unlocked", s.unlocked)
+            .putLong("down_since", s.downSince?.toEpochMilli() ?: 0L).apply()
+    }
+
+    fun readNight(context: Context): NightState {
+        val p = prefs(context)
+        val stretches = p.getString("stretches", "").orEmpty().split(';').filter { it.isNotBlank() }.map {
+            val (a, b) = it.split('-')
+            Stretch(Instant.ofEpochMilli(a.toLong()), Instant.ofEpochMilli(b.toLong()))
+        }
+        return NightState(stretches, instant(p.getLong("hidden_at", 0L)), instant(p.getLong("last_slept", 0L)))
+    }
+
+    fun writeNight(context: Context, s: NightState) {
         prefs(context).edit()
-            .putBoolean("unlocked", state.unlocked)
-            .putLong("down_since", state.downSince?.toEpochMilli() ?: 0L)
+            .putString("stretches", s.stretches.joinToString(";") { "${it.from.toEpochMilli()}-${it.until.toEpochMilli()}" })
+            .putLong("hidden_at", s.hiddenAt?.toEpochMilli() ?: 0L)
+            .putLong("last_slept", s.lastSlept?.toEpochMilli() ?: 0L)
             .apply()
     }
 
+    // ── Phone events ──────────────────────────────────────────────────────────
+
     private fun onScreenOff(context: Context) {
-        writeState(context, PhoneDown.onScreenOff(readState(context), Instant.now()))
+        writePhone(context, PhoneDown.onScreenOff(readPhone(context), Instant.now()))
     }
 
     private fun onUnlock(context: Context) {
         val now = Instant.now()
-        val result = PhoneDown.onUnlock(readState(context), now)
-        writeState(context, result.state)
-        val lastAsked = prefs(context).getLong("last_asked", 0L).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
-        if (!WakeAskGate.shouldAsk(result.downSince, now, lastAsked)) return
-        val downFrom = result.downSince ?: return
-        if (!post(context, now, downFrom, now)) return
-        prefs(context).edit().putLong("last_asked", now.toEpochMilli()).apply()
-        record(context, "sleep.ask", now, downFrom, now, mapOf("asked_at" to now.toString()))
+        val phone = PhoneDown.onUnlock(readPhone(context), now)
+        writePhone(context, phone.state)
+        val r = Night.onUnlock(readNight(context), phone.downSince, now)
+        writeNight(context, r.state)
+        r.expired?.let {
+            cancel(context)
+            record(context, "sleep.ask_expired", now, it, emptyMap())
+        }
+        if (r.post && post(context, r.state.stretches)) {
+            record(context, "sleep.ask", now, r.state.stretches, emptyMap())
+        }
     }
 
-    private fun post(context: Context, askedAt: Instant, downFrom: Instant, downUntil: Instant): Boolean {
+    private fun post(context: Context, stretches: List<Stretch>): Boolean {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
         if (!granted) {
@@ -117,30 +139,34 @@ object SleepAsk {
         NotificationChannels.ensureCreated(context)
         fun intent(action: String, code: Int, mutable: Boolean): PendingIntent {
             val i = Intent(context, SleepAskReceiver::class.java).setAction(action)
-                .putExtra(EXTRA_ASKED_AT, askedAt.toEpochMilli())
-                .putExtra(EXTRA_DOWN_FROM, downFrom.toEpochMilli())
-                .putExtra(EXTRA_DOWN_UNTIL, downUntil.toEpochMilli())
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                 (if (mutable) PendingIntent.FLAG_MUTABLE else PendingIntent.FLAG_IMMUTABLE)
             return PendingIntent.getBroadcast(context, code, i, flags)
         }
-        val since = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(downFrom)
-        val input = RemoteInput.Builder(KEY_REPLY).setLabel("e.g. 3:30 to 10:15").build()
+        val down = stretches.joinToString(", ") { "${hhmm.format(it.from)}–${hhmm.format(it.until)}" }
+        val text = "Phone down $down. When did you fall asleep and wake? Any breaks?"
+        val input = RemoteInput.Builder(KEY_REPLY).setLabel("e.g. 2 to 10, up at 5 for a bit").build()
         val reply = NotificationCompat.Action.Builder(
             android.R.drawable.ic_menu_edit, "Slept…", intent(ACTION_REPLY, 11, mutable = true),
         ).addRemoteInput(input).build()
         val notAsleep = NotificationCompat.Action.Builder(
-            android.R.drawable.ic_menu_close_clear_cancel, "Wasn't asleep",
-            intent(ACTION_NOT_ASLEEP, 12, mutable = false),
+            android.R.drawable.ic_menu_close_clear_cancel, "Wasn't asleep", intent(ACTION_NOT_ASLEEP, 12, mutable = false),
+        ).build()
+        val later = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_recent_history, "Later", intent(ACTION_LATER, 14, mutable = false),
         ).build()
         val n = NotificationCompat.Builder(context, NotificationChannels.SLEEP)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("Were you asleep?")
-            .setContentText("Phone down since $since. When did you fall asleep and wake?")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .addAction(reply)
             .addAction(notAsleep)
+            .addAction(later)
             .setDeleteIntent(intent(ACTION_DISMISSED, 13, mutable = false))
-            .setAutoCancel(true)
+            // Silent: it may arrive at a 4am pickup, and must not wake him further.
+            .setSilent(true)
+            .setOnlyAlertOnce(true)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, n)
         return true
@@ -149,15 +175,16 @@ object SleepAsk {
     fun cancel(context: Context) =
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
 
-    fun record(
-        context: Context, type: String, ts: Instant, downFrom: Instant, downUntil: Instant,
-        extra: Map<String, Any?>,
-    ) {
+    fun record(context: Context, type: String, ts: Instant, stretches: List<Stretch>, extra: Map<String, Any?>) {
+        val minutesDown = stretches.sumOf { Duration.between(it.from, it.until).toMinutes() }
         val event = RawEvent(
             collector = SleepCollector.ID, type = type, ts = ts,
-            value = Duration.between(downFrom, downUntil).toMinutes().toDouble(), unit = "minutes_down",
-            source = "sleep_ask",
-            payload = mapOf("phone_down_from" to downFrom.toString(), "phone_down_until" to downUntil.toString()) + extra,
+            value = minutesDown.toDouble(), unit = "minutes_down", source = "sleep_ask",
+            payload = mapOf(
+                "phone_down_from" to stretches.firstOrNull()?.from?.toString(),
+                "phone_down_until" to stretches.lastOrNull()?.until?.toString(),
+                "stretches" to stretches.joinToString(",") { "${it.from}/${it.until}" },
+            ) + extra,
         )
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
@@ -170,30 +197,36 @@ object SleepAsk {
     }
 }
 
-/** His answer, the "wasn't asleep" tap, or a swipe-away. Never opens the app. */
+/** His answer, "wasn't asleep", Later, or a swipe-away. Never opens the app. */
 class SleepAskReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
         val now = Instant.now()
-        val askedAt = Instant.ofEpochMilli(intent.getLongExtra(SleepAsk.EXTRA_ASKED_AT, now.toEpochMilli()))
-        val downFrom = Instant.ofEpochMilli(intent.getLongExtra(SleepAsk.EXTRA_DOWN_FROM, now.toEpochMilli()))
-        val downUntil = Instant.ofEpochMilli(intent.getLongExtra(SleepAsk.EXTRA_DOWN_UNTIL, now.toEpochMilli()))
-        val base = mapOf("asked_at" to askedAt.toString())
+        val night = SleepAsk.readNight(app)
+        if (night.stretches.isEmpty()) {
+            SleepAsk.cancel(app)
+            return
+        }
         when (intent.action) {
             SleepAsk.ACTION_REPLY -> {
                 val text = RemoteInput.getResultsFromIntent(intent)
                     ?.getCharSequence(SleepAsk.KEY_REPLY)?.toString()?.trim()
                 if (text.isNullOrEmpty()) return
-                SleepAsk.record(app, "sleep.label", now, downFrom, downUntil, base + mapOf("kind" to "slept", "answer" to text))
+                SleepAsk.record(app, "sleep.label", now, night.stretches, mapOf("kind" to "slept", "answer" to text))
+                SleepAsk.writeNight(app, Night.onAnsweredSlept(night, now))
+                SleepAsk.cancel(app)
             }
-            SleepAsk.ACTION_NOT_ASLEEP ->
-                SleepAsk.record(app, "sleep.label", now, downFrom, downUntil, base + mapOf("kind" to "not_asleep"))
-            SleepAsk.ACTION_DISMISSED -> {
-                SleepAsk.record(app, "sleep.ask_dismissed", now, downFrom, downUntil, base)
-                return
+            SleepAsk.ACTION_NOT_ASLEEP -> {
+                SleepAsk.record(app, "sleep.label", now, night.stretches, mapOf("kind" to "not_asleep"))
+                SleepAsk.writeNight(app, Night.onAnsweredNotAsleep(night))
+                SleepAsk.cancel(app)
             }
-            else -> return
+            SleepAsk.ACTION_LATER, SleepAsk.ACTION_DISMISSED -> {
+                val how = if (intent.action == SleepAsk.ACTION_LATER) "later" else "swiped"
+                SleepAsk.record(app, "sleep.ask_hidden", now, night.stretches, mapOf("how" to how))
+                SleepAsk.writeNight(app, Night.onHidden(night, now))
+                SleepAsk.cancel(app)
+            }
         }
-        SleepAsk.cancel(app)
     }
 }
