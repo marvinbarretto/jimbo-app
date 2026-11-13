@@ -14,7 +14,11 @@ class JimboApplication : Application() {
         // WorkManager is idempotent under UPDATE policy — safe to call on every launch.
         SyncScheduler.schedulePeriodic(this)
         DeviceBroadcasts.register(this)
-        dev.marvinbarretto.jimbo.sleepask.SleepAsk.register(this)
+        // Sleep night question: off since 13 Nov 2026. Marvin answers in the morning
+        // briefing's "Last night" section instead (jimbo-dashboard #203), one place to
+        // be asked. Kept for the next step, a one-tap "looks like 02:10-10:40, right?"
+        // confirmation once the sources can guess (SM-7959).
+        // dev.marvinbarretto.jimbo.sleepask.SleepAsk.register(this)
         dev.marvinbarretto.jimbo.nudge.NudgeWorker.schedule(this)
 
         // Play Services activity recognition + location registrations don't survive
