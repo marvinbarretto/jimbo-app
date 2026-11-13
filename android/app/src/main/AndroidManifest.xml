@@ -127,6 +127,10 @@
             android:name=".nudge.FoodReplyReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".sleepask.SleepAskReceiver"
+            android:exported="false" />
+
         <service
             android:name=".walk.WalkSessionService"
             android:exported="false"

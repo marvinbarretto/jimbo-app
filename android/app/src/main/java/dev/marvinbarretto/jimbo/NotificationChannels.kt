@@ -15,6 +15,7 @@ object NotificationChannels {
     const val FOCUS = "focus"
     const val PLACES = "places"
     const val WALK = "walk"
+    const val SLEEP = "sleep"
 
     fun ensureCreated(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -24,6 +25,8 @@ object NotificationChannels {
                 NotificationChannel(NUDGES, "Nudges", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(GYM, "Gym", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(PLACES, "Places", NotificationManager.IMPORTANCE_DEFAULT),
+                // The morning "were you asleep?" question (sleep-metric, SM-7959).
+                NotificationChannel(SLEEP, "Sleep question", NotificationManager.IMPORTANCE_DEFAULT),
                 // Walk mode's start/stop controls: silent, they only carry the buttons.
                 NotificationChannel(WALK, "Walk mode", NotificationManager.IMPORTANCE_LOW),
                 // High importance + vibration: a finished block is meant to be felt, not just seen.
