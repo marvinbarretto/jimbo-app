@@ -7,13 +7,17 @@ import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dev.marvinbarretto.jimbo.HealthConnectReader
 import dev.marvinbarretto.jimbo.exerciseTypeName
+import dev.marvinbarretto.jimbo.stageTypeName
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -22,6 +26,26 @@ import java.time.ZoneId
 private const val TAG = "HealthCollector"
 private const val AGGREGATE_SOURCE = "health_connect_aggregate"
 private const val DAILY_SOURCE = "health_connect_daily"
+private const val HEART_RATE_SOURCE = "health_connect_hr_10min"
+
+/**
+ * A band writes to Health Connect only when its app syncs, often hours after
+ * the fact: last night's sleep lands when Mi Fitness next runs. So sleep and
+ * heart rate are read over a trailing lookback, not the sync window. Event ids
+ * are content-derived (TelemetryStore), so re-reading an unchanged session or
+ * slice posts nothing new. A slice that gains samples on a late sync posts
+ * again with the higher `samples`; readers keep the row with the most.
+ */
+internal val SLEEP_LOOKBACK: Duration = Duration.ofHours(36)
+internal val HEART_RATE_LOOKBACK: Duration = Duration.ofHours(24)
+internal val HEART_RATE_SLICE: Duration = Duration.ofMinutes(10)
+
+/** [from, to) of whole heart-rate slices ending at or before [now]: a slice still filling is left for the next run. */
+internal fun heartRateRange(now: Instant): Pair<Instant, Instant> {
+    val sliceSeconds = HEART_RATE_SLICE.seconds
+    val to = Instant.ofEpochSecond(now.epochSecond - Math.floorMod(now.epochSecond, sliceSeconds))
+    return to.minus(HEART_RATE_LOOKBACK) to to
+}
 
 /**
  * Start of the logical day, mirroring LOGICAL_DAY_CUTOVER_HOURS in
@@ -56,6 +80,8 @@ class HealthConnectCollector(
         collectMissedDays(client, window, events)
         collectFloors(client, filter, window, events)
         collectExerciseSessions(client, filter, window, events)
+        collectSleepSessions(client, window, events)
+        collectHeartRate(client, window, events)
 
         Log.d(TAG, "Collected ${events.size} Health Connect events")
         return events
@@ -288,6 +314,89 @@ class HealthConnectCollector(
         } catch (e: Exception) {
             Log.e(TAG, "Exercise session collection failed", e)
             events += errorEvent("exercise_sessions", e, window)
+        }
+    }
+
+    /** One `sleep_session` per Health Connect session in the lookback, stages in the payload (empty when the app writes none). */
+    private suspend fun collectSleepSessions(
+        client: HealthConnectClient,
+        window: TimeWindow,
+        events: MutableList<RawEvent>
+    ) {
+        try {
+            val filter = TimeRangeFilter.between(window.end.minus(SLEEP_LOOKBACK), window.end)
+            client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, filter)).records.forEach { record ->
+                events += RawEvent(
+                    collector = id,
+                    type = "sleep_session",
+                    ts = record.startTime,
+                    tsEnd = record.endTime,
+                    value = Duration.between(record.startTime, record.endTime).toMinutes().toDouble(),
+                    unit = "duration_min",
+                    source = record.metadata.dataOrigin.packageName,
+                    payload = mapOf(
+                        "hc_uid" to record.metadata.id,
+                        "title" to record.title,
+                        "stages" to record.stages.map { stage ->
+                            mapOf(
+                                "type" to stageTypeName(stage.stage),
+                                "start" to stage.startTime.toString(),
+                                "end" to stage.endTime.toString()
+                            )
+                        }
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Sleep session collection failed", e)
+            events += errorEvent("sleep_sessions", e, window)
+        }
+    }
+
+    /** Heart rate as 10-minute slices (avg as value; min, max and sample count in the payload), only slices with samples. */
+    private suspend fun collectHeartRate(
+        client: HealthConnectClient,
+        window: TimeWindow,
+        events: MutableList<RawEvent>
+    ) {
+        try {
+            val (from, to) = heartRateRange(window.end)
+            val slices = client.aggregateGroupByDuration(
+                AggregateGroupByDurationRequest(
+                    metrics = setOf(
+                        HeartRateRecord.BPM_AVG,
+                        HeartRateRecord.BPM_MIN,
+                        HeartRateRecord.BPM_MAX,
+                        HeartRateRecord.MEASUREMENTS_COUNT
+                    ),
+                    timeRangeFilter = TimeRangeFilter.between(from, to),
+                    timeRangeSlicer = HEART_RATE_SLICE
+                )
+            )
+            slices.forEach { slice ->
+                val samples = slice.result[HeartRateRecord.MEASUREMENTS_COUNT] ?: 0L
+                val avg = slice.result[HeartRateRecord.BPM_AVG]
+                if (samples > 0 && avg != null) {
+                    events += RawEvent(
+                        collector = id,
+                        type = "heart_rate",
+                        ts = slice.startTime,
+                        tsEnd = slice.endTime,
+                        value = avg.toDouble(),
+                        unit = "bpm",
+                        source = HEART_RATE_SOURCE,
+                        payload = mapOf(
+                            "min" to slice.result[HeartRateRecord.BPM_MIN],
+                            "max" to slice.result[HeartRateRecord.BPM_MAX],
+                            "samples" to samples,
+                            "origins" to slice.result.dataOrigins.map { it.packageName }.sorted()
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Heart rate collection failed", e)
+            events += errorEvent("heart_rate", e, window)
         }
     }
 

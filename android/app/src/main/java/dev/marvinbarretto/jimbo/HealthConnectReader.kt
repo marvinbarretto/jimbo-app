@@ -62,11 +62,14 @@ data class SleepSessionSummary(
 
 object HealthConnectReader {
 
-    // Sleep and heart rate are not listed: the manifest declares neither, so
-    // Health Connect shows no toggle and the grant is impossible. With a
-    // wearable, add READ_SLEEP / READ_HEART_RATE to the manifest AND the
-    // records back here; HealthPermissionsManifestTest keeps the two in step.
+    // Sleep and heart rate came back on 13 Nov 2026 with the Xiaomi Smart
+    // Band 10 (Mi Fitness writes both to Health Connect). A permission must be
+    // declared in the manifest AND listed here, or Health Connect shows no
+    // toggle and the grant is impossible; HealthPermissionsManifestTest keeps
+    // the two in step.
     val PERMISSIONS = setOf(
+        HealthPermission.getReadPermission(SleepSessionRecord::class),
+        HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(DistanceRecord::class),
         HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
