@@ -16,6 +16,7 @@ private const val TAG = "UsageCollector"
 private const val PREFS = "usage_collector"
 private const val TOP_APP_LIMIT = 20
 private const val SESSION_CURSOR = "session_cursor_ms"
+private val SCREEN_LOOKBACK: Duration = Duration.ofHours(12)
 private val SESSION_BACKFILL: Duration = Duration.ofDays(7)
 
 class UsageCollector(
@@ -50,8 +51,11 @@ class UsageCollector(
         usageStatsManager: UsageStatsManager,
         window: TimeWindow
     ): RawEvent? {
+        // Read back past the window start so a screen-on that began before it is seen.
         val summary = summarizeUsageWindow(
-            readUsageEvents(usageStatsManager, window.start, window.end)
+            readUsageEvents(usageStatsManager, window.start.minus(SCREEN_LOOKBACK), window.end),
+            window.start,
+            window.end
         )
 
         if (summary.totalOnSeconds <= 0.0 && summary.unlockCount == 0) {
@@ -195,34 +199,56 @@ internal fun hasUsageAccess(context: Context): Boolean {
     return mode == AppOpsManager.MODE_ALLOWED
 }
 
-internal fun summarizeUsageWindow(events: List<UsageEventRow>): ScreenSessionSummary {
+/**
+ * Screen-on seconds and unlocks inside [windowStart]..[windowEnd]. [events] may
+ * start earlier (the collector reads [SCREEN_LOOKBACK] back): a screen-on that
+ * began before the window, or is still going at its end, counts for the part
+ * inside it. Counting only on/off pairs seen inside the window read 0 for a
+ * 2h window that sat wholly within one 3h screen-on (14 Nov 2026).
+ */
+internal fun summarizeUsageWindow(
+    events: List<UsageEventRow>,
+    windowStart: Instant,
+    windowEnd: Instant
+): ScreenSessionSummary {
     var interactiveSince: Instant? = null
     var totalOnSeconds = 0.0
     var unlockCount = 0
     var firstUnlock: Instant? = null
     var lastUnlock: Instant? = null
+    var sawScreenEvent = false
+
+    fun addOn(from: Instant, to: Instant) {
+        val a = maxOf(from, windowStart)
+        val b = minOf(to, windowEnd)
+        if (b.isAfter(a)) totalOnSeconds += Duration.between(a, b).seconds.toDouble()
+    }
 
     events.sortedBy { it.timestamp }.forEach { event ->
         when (event.eventType) {
             UsageEvents.Event.SCREEN_INTERACTIVE -> {
+                sawScreenEvent = true
                 interactiveSince = interactiveSince ?: event.timestamp
             }
 
             UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
-                val start = interactiveSince
-                if (start != null && !event.timestamp.isBefore(start)) {
-                    totalOnSeconds += Duration.between(start, event.timestamp).seconds.toDouble()
-                }
+                // First screen event is an "off": it was on since before the events we have.
+                val start = interactiveSince ?: if (!sawScreenEvent) windowStart else null
+                sawScreenEvent = true
+                if (start != null && !event.timestamp.isBefore(start)) addOn(start, event.timestamp)
                 interactiveSince = null
             }
 
             UsageEvents.Event.KEYGUARD_HIDDEN -> {
-                unlockCount += 1
-                firstUnlock = firstUnlock ?: event.timestamp
-                lastUnlock = event.timestamp
+                if (!event.timestamp.isBefore(windowStart) && event.timestamp.isBefore(windowEnd)) {
+                    unlockCount += 1
+                    firstUnlock = firstUnlock ?: event.timestamp
+                    lastUnlock = event.timestamp
+                }
             }
         }
     }
+    interactiveSince?.let { addOn(it, windowEnd) }
 
     return ScreenSessionSummary(
         totalOnSeconds = totalOnSeconds,
