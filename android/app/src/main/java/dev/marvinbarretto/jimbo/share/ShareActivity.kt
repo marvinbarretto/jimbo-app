@@ -21,7 +21,8 @@ class ShareActivity : Activity() {
             Toast.makeText(this, "Nothing to send to Jimbo", Toast.LENGTH_SHORT).show()
         } else {
             ShareWorker.enqueue(applicationContext, item)
-            Toast.makeText(this, "Sent to Jimbo", Toast.LENGTH_SHORT).show()
+            // Queued, not sent: the worker sends when there is a network and notifies if it fails.
+            Toast.makeText(this, "Queued for Jimbo", Toast.LENGTH_SHORT).show()
         }
         finish()
     }
