@@ -26,17 +26,13 @@ object ShareLink {
 
     /**
      * Puts Marvin's own words above the shared text so the router can tell them apart:
-     * "Why (Marvin): <note>" and "Research: yes" (each only when set), then "---", then the
-     * original body. With neither, the body is unchanged (no "---"). Title is never touched.
+     * "Why (Marvin): <note>", then "---", then the original body. With an empty note the
+     * body is unchanged (no "---"). Title is never touched.
      */
-    fun withNote(item: SharedItem, note: String?, research: Boolean): SharedItem {
+    fun withNote(item: SharedItem, note: String?): SharedItem {
         val why = note?.trim().orEmpty()
-        val head = buildList {
-            if (why.isNotEmpty()) add("Why (Marvin): $why")
-            if (research) add("Research: yes")
-        }
-        if (head.isEmpty()) return item
-        val body = head.joinToString("\n") + (item.body?.let { "\n---\n$it" } ?: "")
+        if (why.isEmpty()) return item
+        val body = "Why (Marvin): $why" + (item.body?.let { "\n---\n$it" } ?: "")
         return item.copy(body = body)
     }
 

@@ -59,28 +59,26 @@ class ShareLinkTest {
 
     private val item = SharedItem("https://example.com/a", "Subject\nhttps://example.com/a")
 
-    @Test fun noteAndResearch() = assertEquals(
-        "Why (Marvin): good for the Watford idea\nResearch: yes\n---\nSubject\nhttps://example.com/a",
-        ShareLink.withNote(item, "good for the Watford idea", true).body,
-    )
-
-    @Test fun noteOnly() = assertEquals(
+    @Test fun noteGoesAboveTheSharedText() = assertEquals(
         "Why (Marvin): because\n---\nSubject\nhttps://example.com/a",
-        ShareLink.withNote(item, "  because \n", false).body,
+        ShareLink.withNote(item, "  because \n").body,
     )
 
-    @Test fun researchOnly() = assertEquals(
-        "Research: yes\n---\nSubject\nhttps://example.com/a",
-        ShareLink.withNote(item, "   ", true).body,
+    @Test fun multiLineNoteIsVerbatim() = assertEquals(
+        "Why (Marvin): one\ntwo\n---\nSubject\nhttps://example.com/a",
+        ShareLink.withNote(item, "one\ntwo").body,
     )
 
-    @Test fun neitherLeavesBodyAlone() = assertEquals(item, ShareLink.withNote(item, "", false))
+    @Test fun emptyNoteLeavesBodyAlone() {
+        assertEquals(item, ShareLink.withNote(item, "   "))
+        assertEquals(item, ShareLink.withNote(item, null))
+    }
 
     @Test fun titleStaysBareUrl() =
-        assertEquals("https://example.com/a", ShareLink.withNote(item, "x", true).title)
+        assertEquals("https://example.com/a", ShareLink.withNote(item, "x").title)
 
     @Test fun noteSurvivesJsonEscaping() {
-        val json = ShareLink.doorJson(ShareLink.withNote(item, "say \"hi\"", false))
+        val json = ShareLink.doorJson(ShareLink.withNote(item, "say \"hi\""))
         assert(json.contains("Why (Marvin): say \\\"hi\\\"\\n---"))
     }
 }

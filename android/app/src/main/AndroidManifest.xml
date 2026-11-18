@@ -75,6 +75,20 @@
             android:name=".share.ShareActivity"
             android:exported="true"
             android:label="Jimbo"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".share.ShareNoteActivity"
+            android:exported="true"
+            android:label="Jimbo + note"
             android:theme="@style/ShareSheet"
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
             android:excludeFromRecents="true"
