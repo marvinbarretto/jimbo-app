@@ -19,4 +19,10 @@
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
     </style>
+
+    <!-- Share sheet: a dialog-look activity over the sharing app (share/ShareActivity). -->
+    <style name="ShareSheet" parent="@android:style/Theme.Material.Light.Dialog.NoActionBar">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
+    </style>
 </resources>

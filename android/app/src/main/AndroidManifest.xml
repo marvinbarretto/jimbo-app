@@ -75,7 +75,8 @@
             android:name=".share.ShareActivity"
             android:exported="true"
             android:label="Jimbo"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:theme="@style/ShareSheet"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:taskAffinity="">
