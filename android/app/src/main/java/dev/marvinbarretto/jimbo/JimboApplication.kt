@@ -25,7 +25,8 @@ class JimboApplication : Application() {
         // The PendingIntent key is stable so Play Services deduplicates.
         if (hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
             ActivityRecognitionManager.register(this)
-            SleepManager.register(this)
+            // The Sleep API is retired (18 Nov 2026): drop any subscription an older build left.
+            SleepManager.unregister(this)
         }
         if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
             hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {

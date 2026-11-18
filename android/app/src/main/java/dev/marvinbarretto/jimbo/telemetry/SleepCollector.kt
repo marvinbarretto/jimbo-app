@@ -3,8 +3,9 @@ package dev.marvinbarretto.jimbo.telemetry
 import com.google.android.gms.location.SleepSegmentEvent
 
 /**
- * Google Sleep API readings. Events come from SleepReceiver, not polling;
- * this entry gives the collector a setting row so it can be switched off.
+ * Google Sleep API readings, retired 18 Nov 2026 (see SleepManager): nothing is
+ * recorded any more. The entry keeps the collector's id and setting row, which
+ * other `sleep` events (labels) share.
  */
 class SleepCollector : Collector {
     override val id: String = ID
