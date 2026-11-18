@@ -69,6 +69,23 @@
              card duplicated /m/today poorly while the context layer is thin.
              HomeActivity stays reachable and returns as launcher when the
              adaptive context card is worth the tap. -->
+        <!-- Share target (share/): Share -> Jimbo on any link. No UI; queues a
+             WorkManager send to /api/door and finishes. Log tag JimboShare. -->
+        <activity
+            android:name=".share.ShareActivity"
+            android:exported="true"
+            android:label="Jimbo"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"

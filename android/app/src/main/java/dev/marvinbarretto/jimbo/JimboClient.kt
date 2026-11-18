@@ -48,7 +48,7 @@ object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
      * from the environment at build time: `scripts/install-phone.sh` runs the
      * build under `op run`, so the key's only home is 1Password (Fleet/phone).
      */
-    private fun postJson(path: String, jsonBody: String): Pair<Int, String> =
+    fun postJson(path: String, jsonBody: String): Pair<Int, String> =
         sendJson("POST", path, jsonBody)
 
     private fun sendJson(method: String, path: String, jsonBody: String?): Pair<Int, String> {
