@@ -30,14 +30,16 @@ private const val HEART_RATE_SOURCE = "health_connect_hr_10min"
 
 /**
  * A band writes to Health Connect only when its app syncs, often hours after
- * the fact: last night's sleep lands when Mi Fitness next runs. So sleep and
- * heart rate are read over a trailing lookback, not the sync window. Event ids
+ * the fact: last night's sleep lands when Gadgetbridge next fetches. So sleep
+ * and heart rate are read over a trailing lookback, not the sync window. Heart
+ * rate looks back 48 h: on 19 Nov 2026 Gadgetbridge lost the band for 33 h and
+ * its backfill wrote slices a 24 h lookback never read again. Event ids
  * are content-derived (TelemetryStore), so re-reading an unchanged session or
  * slice posts nothing new. A slice that gains samples on a late sync posts
  * again with the higher `samples`; readers keep the row with the most.
  */
 internal val SLEEP_LOOKBACK: Duration = Duration.ofHours(36)
-internal val HEART_RATE_LOOKBACK: Duration = Duration.ofHours(24)
+internal val HEART_RATE_LOOKBACK: Duration = Duration.ofHours(48)
 internal val HEART_RATE_SLICE: Duration = Duration.ofMinutes(10)
 
 /** [from, to) of whole heart-rate slices ending at or before [now]: a slice still filling is left for the next run. */

@@ -11,7 +11,7 @@ class HeartRateRangeTest {
     fun endsAtTheLastWholeSliceSoAFillingSliceWaits() {
         val (from, to) = heartRateRange(Instant.parse("2026-11-14T08:17:42Z"))
         assertEquals(Instant.parse("2026-11-14T08:10:00Z"), to)
-        assertEquals(Instant.parse("2026-11-13T08:10:00Z"), from)
+        assertEquals(Instant.parse("2026-11-12T08:10:00Z"), from)
     }
 
     @Test
@@ -21,8 +21,8 @@ class HeartRateRangeTest {
     }
 
     @Test
-    fun theLookbackCoversAWholeNightWithItsLateSync() {
+    fun theLookbackCoversADayLongBandOutageAndItsBackfill() {
         val (from, to) = heartRateRange(Instant.parse("2026-11-14T12:00:00Z"))
-        assertEquals(Duration.ofHours(24), Duration.between(from, to))
+        assertEquals(Duration.ofHours(48), Duration.between(from, to))
     }
 }
