@@ -32,6 +32,12 @@ class JimboApplication : Application() {
             hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
             JimboLocationManager.register(this)
             PlaceGeofenceManager.register(this)
+            // The nearest saved places too, when a pick is due: launch doesn't queue a sync once permissions are
+            // granted, and the periodic one can be 45 minutes off. Network, so off the main thread.
+            Thread {
+                try { dev.marvinbarretto.jimbo.place.RemoteFences.refreshIfDue(this) }
+                catch (e: Exception) { android.util.Log.e("JimboSync", "Remote fences refresh on launch failed", e) }
+            }.start()
         }
     }
 
