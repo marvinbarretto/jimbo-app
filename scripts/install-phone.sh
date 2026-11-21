@@ -5,7 +5,8 @@
 #   scripts/install-phone.sh --live   # build, then adb install on the connected phone
 #
 # The key's only home is 1Password (op://Fleet/phone/jimbo_key, ADR-0106).
-# `op run` hands it to gradle as JIMBO_API_KEY for this build and nowhere else;
+# `op run` hands it to gradle as JIMBO_PHONE_API_KEY for this build and nowhere else
+# (not JIMBO_API_KEY: ~/.zshenv sets that to the dashboard key);
 # build.gradle bakes it into BuildConfig. local.properties keeps the URL and
 # the places, never the key.
 #

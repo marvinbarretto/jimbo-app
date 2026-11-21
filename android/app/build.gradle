@@ -28,7 +28,11 @@ android {
         // The phone's own key (JIMBO_API_KEY_PHONE on the API), from 1Password via
         // `op run` in scripts/install-phone.sh. Never local.properties: the key
         // that lived there was the retired shared key (401s from 2026-10-10).
-        buildConfigField "String", "JIMBO_API_KEY", "\"${System.getenv('JIMBO_API_KEY') ?: ''}\""
+        // Its own variable name, never JIMBO_API_KEY: ~/.zshenv sets that to the
+        // dashboard key, and a build run without op run baked it in, so the door
+        // refused every share from 19 to 21 Nov (jimbo docs/checks/2026-11-21-shares-refused-at-the-door.md).
+        // Without op run the key is blank, which fails loudly (401) instead.
+        buildConfigField "String", "JIMBO_API_KEY", "\"${System.getenv('JIMBO_PHONE_API_KEY') ?: ''}\""
         buildConfigField "String", "JIMBO_DEVICE_ID", "\"${localProps.getProperty('jimbo.device.id', 'pixel-marvin')}\""
         // Geofenced places as "lat,lng[,radiusMetres]". Blank = not fenced.
         buildConfigField "String", "JIMBO_PLACE_HOME", "\"${localProps.getProperty('jimbo.place.home', '')}\""
