@@ -18,7 +18,7 @@ private const val TAG = "JimboSync"
 private const val LOITERING_MS = 3 * 60 * 1000
 
 /**
- * Registers the configured place geofences (PlaceGeofence.configured). Transitions only — no GPS stream. Play
+ * Registers the place geofences: the configured ones and the nearest from Jimbo (PlaceGeofence.active). Transitions only — no GPS stream. Play
  * Services drops geofences on reboot and package replacement, so callers
  * re-arm from the same places as JimboLocationManager.register.
  */
@@ -26,7 +26,7 @@ object PlaceGeofenceManager {
 
     @SuppressLint("MissingPermission")
     fun register(context: Context) {
-        val fences = PlaceGeofence.configured()
+        val fences = PlaceGeofence.active(context)
         if (fences.isEmpty()) return
         if (!hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ||
             !hasPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
@@ -43,7 +43,7 @@ object PlaceGeofenceManager {
         val client = LocationServices.getGeofencingClient(context)
         client.removeGeofences(pendingIntent(context)).addOnCompleteListener {
             client.addGeofences(request, pendingIntent(context))
-                .addOnSuccessListener { Log.d(TAG, "Geofences registered: ${fences.map { it.requestId }}") }
+                .addOnSuccessListener { Log.d(TAG, "Geofences registered: ${fences.size}") }
                 .addOnFailureListener { Log.e(TAG, "Failed to register geofences", it) }
         }
     }

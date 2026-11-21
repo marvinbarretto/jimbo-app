@@ -42,9 +42,10 @@ object JimboLocationManager {
 
     private fun buildRequest(isMoving: Boolean): LocationRequest =
         LocationRequest.Builder(
-            // Use HIGH_ACCURACY when moving (walking/running needs better resolution),
-            // BALANCED when still (cell/wifi is sufficient and saves battery).
-            if (isMoving) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+            // High accuracy when still too (21 Nov 2026): balanced mode reported a flat 100 m on 61% of samples,
+            // too coarse for 40 m place fences, and he asked for responsive over battery until battery is a measured
+            // problem (jimbo docs/checks/2026-11-21-phone-location-accuracy.md). BatteryUsageCollector records the cost.
+            Priority.PRIORITY_HIGH_ACCURACY,
             if (isMoving) INTERVAL_MOVING_MS else INTERVAL_STILL_MS
         ).build()
 

@@ -66,6 +66,13 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             }
         }
 
+        // The nearest saved places as fences, re-picked when the phone has moved or the pick is old (RemoteFences).
+        try {
+            dev.marvinbarretto.jimbo.place.RemoteFences.refreshIfDue(applicationContext)
+        } catch (e: Exception) {
+            Log.e(TAG, "Remote fences refresh failed", e)
+        }
+
         return when (drainOutcome) {
             is TelemetryDrainOutcome.Success -> Result.success()
             is TelemetryDrainOutcome.RetryableFailure -> Result.retry()

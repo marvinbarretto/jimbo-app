@@ -25,6 +25,8 @@ data class PlaceGeofence(
     val radiusMetres: Float,
     val label: String? = null,
     val quipList: String? = null,
+    /** The place's name, for a fence from Jimbo (RemoteFences); it rides the telemetry event. Never a notification. */
+    val name: String? = null,
 ) {
     val requestId: String get() = id
     val place: Place get() = placeForRequestId(id) ?: Place.OTHER
@@ -39,6 +41,12 @@ data class PlaceGeofence(
 
         fun configured(): List<PlaceGeofence> =
             fromConfig(BuildConfig.JIMBO_PLACE_HOME, BuildConfig.JIMBO_PLACE_GYM, BuildConfig.JIMBO_PLACES)
+
+        /** What the phone fences: the configured places, then the nearest saved places from Jimbo (RemoteFences). */
+        fun active(context: android.content.Context): List<PlaceGeofence> =
+            RemoteFences.merge(configured(), RemoteFences.load(context)?.fences.orEmpty())
+
+        fun isValidId(id: String): Boolean = ID.matches(id)
 
         fun fromConfig(home: String, gym: String, places: String): List<PlaceGeofence> {
             val listed = parseList(places)

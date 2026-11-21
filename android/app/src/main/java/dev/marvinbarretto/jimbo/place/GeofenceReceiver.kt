@@ -15,6 +15,7 @@ import com.google.android.gms.location.GeofencingEvent
 import dev.marvinbarretto.jimbo.MainActivity
 import dev.marvinbarretto.jimbo.NotificationChannels
 import dev.marvinbarretto.jimbo.NotificationTriggerReceiver
+import dev.marvinbarretto.jimbo.SyncScheduler
 import dev.marvinbarretto.jimbo.data.StepsDatabase
 import dev.marvinbarretto.jimbo.telemetry.PlaceCollector
 import dev.marvinbarretto.jimbo.telemetry.RawEvent
@@ -43,7 +44,7 @@ class GeofenceReceiver : BroadcastReceiver() {
         }
         val now = System.currentTimeMillis()
         val transition = event.geofenceTransition
-        val configured = PlaceGeofence.configured().associateBy { it.requestId }
+        val configured = PlaceGeofence.active(context).associateBy { it.requestId }
         val triggered = event.triggeringGeofences.orEmpty().mapNotNull { configured[it.requestId] }
         // One enter, dwell and exit per visit: Android repeats them on every re-registration (PlaceVisits).
         val fences = triggered.filter { fence ->
@@ -67,6 +68,8 @@ class GeofenceReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 recordTransitions(context, fences, transition, Instant.ofEpochMilli(now))
+                // A stay goes up now, not at the next 30-minute sync: coaches read it while he is still there.
+                if (transition == Geofence.GEOFENCE_TRANSITION_DWELL) SyncScheduler.enqueueManualSync(context)
                 if (transition == Geofence.GEOFENCE_TRANSITION_ENTER && fences.any { it.place == Place.GYM }) {
                     offerSessionStart(context)
                 }
@@ -103,7 +106,11 @@ class GeofenceReceiver : BroadcastReceiver() {
                 collector = PlaceCollector.ID,
                 type = type,
                 ts = at,
-                payload = mapOf("place" to fence.id, "radius_m" to fence.radiusMetres.toDouble()),
+                payload = buildMap {
+                    put("place", fence.id)
+                    put("radius_m", fence.radiusMetres.toDouble())
+                    fence.name?.let { put("name", it) }
+                },
             )
         }
         database.eventDao().insertAll(events.map { it.toEntity() })
