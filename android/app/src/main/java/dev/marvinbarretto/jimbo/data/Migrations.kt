@@ -48,5 +48,16 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+/**
+ * 5 → 6: sync on any connection. No schema change; it turns off the stored Wi-Fi-only flag, which nothing on the
+ * phone can change and which held every event taken away from Wi-Fi until the next Wi-Fi (22 Nov 2026: a walk
+ * from 13:48 to 15:32 reached Jimbo at 15:32).
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE `sync_constraints` SET `wifiOnly` = 0")
+    }
+}
+
 /** Every migration, in order. Add new ones here as the schema grows. */
-val ALL_MIGRATIONS = arrayOf(MIGRATION_4_5)
+val ALL_MIGRATIONS = arrayOf(MIGRATION_4_5, MIGRATION_5_6)

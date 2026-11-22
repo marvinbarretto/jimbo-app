@@ -68,8 +68,9 @@ class GeofenceReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 recordTransitions(context, fences, transition, Instant.ofEpochMilli(now), event.triggeringLocation)
-                // A stay goes up now, not at the next 30-minute sync: coaches read it while he is still there.
-                if (transition == Geofence.GEOFENCE_TRANSITION_DWELL) SyncScheduler.enqueueManualSync(context)
+                // Every arrival, stay and leaving goes up now, not at the next 30-minute sync: Jimbo knows where he is
+                // while he is there (22 Nov 2026: an exit at 14:05 reached Jimbo at 15:32).
+                SyncScheduler.enqueueManualSync(context)
                 runActions(context, fences, transition, now)
             } catch (e: Exception) {
                 Log.e(TAG, "Geofence handling failed", e)

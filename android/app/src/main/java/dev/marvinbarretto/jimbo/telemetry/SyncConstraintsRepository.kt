@@ -5,7 +5,7 @@ import dev.marvinbarretto.jimbo.data.StepsDatabase
 import dev.marvinbarretto.jimbo.data.SyncConstraintEntity
 
 data class SyncConstraints(
-    val wifiOnly: Boolean = true,
+    val wifiOnly: Boolean = false,
     val minBatteryPercent: Int = 15
 )
 
