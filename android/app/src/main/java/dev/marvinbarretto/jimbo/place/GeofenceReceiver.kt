@@ -29,10 +29,10 @@ private const val TAG = "JimboSync"
 
 /**
  * Turns geofence transitions into three things: a `place` telemetry event for
- * every enter, dwell and exit (the place's id only, never coordinates); the
- * current named place for the /m shell; and a notification, either the gym's
- * one-tap "start a session?" on entry, or "At <label>" once you have stayed at
- * a labelled place. Never starts a session itself.
+ * every enter, dwell and exit (the place's id and name, never coordinates); the
+ * current named place (home, gym) for the /m shell; and each fence's actions for
+ * that transition (PlaceAction: a notification, a quip, the gym's one-tap
+ * "start a session?"). Never starts a session itself.
  */
 class GeofenceReceiver : BroadcastReceiver() {
 
@@ -70,23 +70,36 @@ class GeofenceReceiver : BroadcastReceiver() {
                 recordTransitions(context, fences, transition, Instant.ofEpochMilli(now))
                 // A stay goes up now, not at the next 30-minute sync: coaches read it while he is still there.
                 if (transition == Geofence.GEOFENCE_TRANSITION_DWELL) SyncScheduler.enqueueManualSync(context)
-                if (transition == Geofence.GEOFENCE_TRANSITION_ENTER && fences.any { it.place == Place.GYM }) {
-                    offerSessionStart(context)
-                }
-                if (transition == Geofence.GEOFENCE_TRANSITION_DWELL) {
-                    fences.filter { it.notifiesOnDwell }.forEach { fence ->
-                        if (fence.quipList != null) {
-                            PlaceQuipWorker.enqueue(context, fence, now)
-                        } else {
-                            val since = java.time.LocalTime.now().minusMinutes(3).withSecond(0).withNano(0)
-                            PlaceNotifier.show(context, fence.id, "At ${fence.label}", "Here since about $since. Jimbo logged the visit.", now)
-                        }
-                    }
-                }
+                runActions(context, fences, transition, now)
             } catch (e: Exception) {
                 Log.e(TAG, "Geofence handling failed", e)
             } finally {
                 pending.finish()
+            }
+        }
+    }
+
+    /** Each fence's actions for this transition (arrive, stay, leave), as set on /places or carried over from the settings file. */
+    private fun runActions(context: Context, fences: List<PlaceGeofence>, transition: Int, now: Long) {
+        val whenever = when (transition) {
+            Geofence.GEOFENCE_TRANSITION_ENTER -> PlaceAction.When.ARRIVE
+            Geofence.GEOFENCE_TRANSITION_DWELL -> PlaceAction.When.STAY
+            Geofence.GEOFENCE_TRANSITION_EXIT -> PlaceAction.When.LEAVE
+            else -> return
+        }
+        for (fence in fences) for (a in fence.actions.filter { it.whenever == whenever }) {
+            val title = a.title ?: "At ${fence.displayName}"
+            when (a.action) {
+                PlaceAction.Do.GYM_OFFER -> offerSessionStart(context)
+                PlaceAction.Do.QUIP -> PlaceQuipWorker.enqueue(context, fence.id, a.list ?: continue, title, now)
+                PlaceAction.Do.NOTIFY -> {
+                    val since = java.time.LocalTime.now().minusMinutes(if (whenever == PlaceAction.When.STAY) 3 else 0).withSecond(0).withNano(0)
+                    val text = a.text ?: when (whenever) {
+                        PlaceAction.When.LEAVE -> "Left at about ${java.time.LocalTime.now().withSecond(0).withNano(0)}."
+                        else -> "Here since about $since. Jimbo logged the visit."
+                    }
+                    PlaceNotifier.show(context, fence.id, title, text, now)
+                }
             }
         }
     }

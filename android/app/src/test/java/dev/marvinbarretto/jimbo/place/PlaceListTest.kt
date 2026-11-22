@@ -1,7 +1,6 @@
 package dev.marvinbarretto.jimbo.place
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,11 +21,13 @@ class PlaceListTest {
         assertEquals(listOf(Place.HOME, Place.GYM, Place.OTHER), fences.map { it.place })
     }
 
-    @Test fun onlyLabelledNonGymPlacesNotifyOnDwell() {
-        val fences = PlaceGeofence.parseList("home|51.1,-0.4|;gym|51.3,-0.42|Gym;pub|51.2,-0.41|Pub")
-        assertFalse(fences[0].notifiesOnDwell)
-        assertFalse(fences[1].notifiesOnDwell)
-        assertTrue(fences[2].notifiesOnDwell)
+    // Parity (22 Nov 2026): the settings-file fences' behaviour as actions, exactly what they did before the fold.
+    @Test fun settingsFileFencesKeepTheirBehaviourAsActions() {
+        val fences = PlaceGeofence.parseList("home|51.1,-0.4|;gym|51.3,-0.42|Gym;moons|51.2,-0.41|The Office|pub-quips;pub|51.25,-0.41|Pub")
+        assertEquals(emptyList<PlaceAction>(), fences[0].actions)
+        assertEquals(listOf(PlaceAction(PlaceAction.When.ARRIVE, PlaceAction.Do.GYM_OFFER)), fences[1].actions)
+        assertEquals(listOf(PlaceAction(PlaceAction.When.STAY, PlaceAction.Do.QUIP, title = "At The Office", list = "pub-quips")), fences[2].actions)
+        assertEquals(listOf(PlaceAction(PlaceAction.When.STAY, PlaceAction.Do.NOTIFY, title = "At Pub")), fences[3].actions)
     }
 
     @Test fun skipsMalformedEntriesWithoutGuessing() {

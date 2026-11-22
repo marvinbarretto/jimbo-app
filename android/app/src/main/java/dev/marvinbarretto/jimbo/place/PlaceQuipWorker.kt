@@ -27,12 +27,12 @@ class PlaceQuipWorker(context: Context, params: WorkerParameters) : CoroutineWor
     override suspend fun doWork(): Result {
         val placeId = inputData.getString(KEY_PLACE) ?: return Result.failure()
         val list = inputData.getString(KEY_LIST) ?: return Result.failure()
-        val label = inputData.getString(KEY_LABEL) ?: placeId
+        val title = inputData.getString(KEY_TITLE) ?: "At $placeId"
         val at = inputData.getLong(KEY_AT, System.currentTimeMillis())
         val quip = runCatching { takeQuip(list, placeId) }
             .onFailure { Log.w(TAG, "Quip fetch failed for $placeId", it) }
             .getOrNull()
-        PlaceNotifier.show(applicationContext, placeId, "At $label", quip ?: FALLBACK, at)
+        PlaceNotifier.show(applicationContext, placeId, title, quip ?: FALLBACK, at)
         return Result.success()
     }
 
@@ -57,17 +57,16 @@ class PlaceQuipWorker(context: Context, params: WorkerParameters) : CoroutineWor
     companion object {
         private const val KEY_PLACE = "place"
         private const val KEY_LIST = "list"
-        private const val KEY_LABEL = "label"
+        private const val KEY_TITLE = "title"
         private const val KEY_AT = "at"
         const val FALLBACK = "You're here again. Jimbo has run out of jokes, which says something."
 
-        fun enqueue(context: Context, fence: PlaceGeofence, atMillis: Long) {
-            val list = fence.quipList ?: return
+        fun enqueue(context: Context, placeId: String, list: String, title: String, atMillis: Long) {
             val request = OneTimeWorkRequestBuilder<PlaceQuipWorker>()
-                .setInputData(workDataOf(KEY_PLACE to fence.id, KEY_LIST to list, KEY_LABEL to fence.label, KEY_AT to atMillis))
+                .setInputData(workDataOf(KEY_PLACE to placeId, KEY_LIST to list, KEY_TITLE to title, KEY_AT to atMillis))
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork("place-quip-${fence.id}", ExistingWorkPolicy.KEEP, request)
+            WorkManager.getInstance(context).enqueueUniqueWork("place-quip-$placeId", ExistingWorkPolicy.KEEP, request)
         }
     }
 }

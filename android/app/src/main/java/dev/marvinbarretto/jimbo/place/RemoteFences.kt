@@ -23,9 +23,9 @@ private const val TAG = "JimboSync"
  * Every saved place is a phone fence (21 Nov 2026). Jimbo holds the places and their circles
  * (jimbo-api `GET /api/entities/places/fences`, set on the dashboard's /places); the phone keeps the
  * nearest ones, since Android allows an app 100 geofences, and asks again when it has moved or the
- * list is old. These fences only record visits: they carry no label, so they never notify. The few
- * fences in local.properties (home, gym, the Moons) keep their notifications and the gym's offer,
- * and a remote fence within [DEDUPE_M] of one of them is dropped, so a visit is never logged twice.
+ * list is old. Each fence brings its role and actions (PlaceAction), set on /places. The settings-file
+ * fences (home, gym, the Moons) are only a fallback until Jimbo's pick names a Home or Gym place
+ * ([merge]); until then a remote fence within [DEDUPE_M] of one of them is dropped.
  *
  * The pick is kept in shared prefs as the API's own JSON, with where and when it was asked for.
  */
@@ -50,12 +50,21 @@ object RemoteFences {
             val lng = f.optDouble("lng", Double.NaN)
             val radius = f.optDouble("radius_m", Double.NaN)
             if (!PlaceGeofence.isValidId(id) || lat.isNaN() || lng.isNaN() || radius.isNaN() || radius <= 0) return@mapNotNull null
-            PlaceGeofence(id, lat, lng, radius.toFloat(), name = f.optString("name").takeIf { it.isNotBlank() })
+            val role = when (f.optString("role")) { "home" -> Place.HOME; "gym" -> Place.GYM; else -> null }
+            PlaceGeofence(
+                id, lat, lng, radius.toFloat(), name = f.optString("name").takeIf { it.isNotBlank() },
+                role = role, remoteActions = PlaceAction.parseAll(f.optJSONArray("actions")),
+            )
         }
     }
 
-    /** The configured fences, then the remote ones not already covered by one, up to Android's cap. */
+    /**
+     * What the phone fences. Once Jimbo's pick names a Home or Gym place, Jimbo owns every fence and the settings
+     * file is ignored (22 Nov 2026: the three fences folded into Jimbo, their behaviour now actions there). Before
+     * that (an older API, no pick yet, offline), the configured fences, then the remote ones not covered by one.
+     */
     fun merge(configured: List<PlaceGeofence>, remote: List<PlaceGeofence>): List<PlaceGeofence> {
+        if (remote.any { it.role != null }) return remote.distinctBy { it.id }.take(ANDROID_MAX)
         val extra = remote.filter { r ->
             configured.none { it.id == r.id || metresBetween(it.latitude, it.longitude, r.latitude, r.longitude) < DEDUPE_M }
         }

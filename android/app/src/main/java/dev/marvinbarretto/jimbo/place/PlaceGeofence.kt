@@ -25,14 +25,33 @@ data class PlaceGeofence(
     val radiusMetres: Float,
     val label: String? = null,
     val quipList: String? = null,
-    /** The place's name, for a fence from Jimbo (RemoteFences); it rides the telemetry event. Never a notification. */
+    /** The place's name, for a fence from Jimbo (RemoteFences); it rides the telemetry event. */
     val name: String? = null,
+    /** Home or Gym when Jimbo gives the place that role: what the /m shell is told. */
+    val role: Place? = null,
+    /** What runs on a visit, from Jimbo. A configured fence gets the same thing from [configuredActions]. */
+    val remoteActions: List<PlaceAction>? = null,
 ) {
     val requestId: String get() = id
-    val place: Place get() = placeForRequestId(id) ?: Place.OTHER
+    val place: Place get() = role ?: placeForRequestId(id) ?: Place.OTHER
 
-    /** A labelled place says so once you have stayed; the gym keeps its own arrival offer. */
-    val notifiesOnDwell: Boolean get() = label != null && place != Place.GYM
+    /** What a visit here does: Jimbo's actions, or for a settings-file fence, what that fence always did. */
+    val actions: List<PlaceAction> get() = remoteActions ?: configuredActions()
+
+    /** The name a notification uses: the place's own, else the settings-file label, else its id. */
+    val displayName: String get() = name ?: label ?: id
+
+    /**
+     * The settings-file fences' behaviour as actions, so one path runs both (and the fold into Jimbo changes
+     * nothing he sees): the gym offers a session on arrival; a labelled place notifies once you have stayed,
+     * with a line from its quip list when it has one; an unlabelled one only records.
+     */
+    private fun configuredActions(): List<PlaceAction> = when {
+        place == Place.GYM -> listOf(PlaceAction(PlaceAction.When.ARRIVE, PlaceAction.Do.GYM_OFFER))
+        label == null -> emptyList()
+        quipList != null -> listOf(PlaceAction(PlaceAction.When.STAY, PlaceAction.Do.QUIP, title = "At $label", list = quipList))
+        else -> listOf(PlaceAction(PlaceAction.When.STAY, PlaceAction.Do.NOTIFY, title = "At $label"))
+    }
 
     companion object {
         const val DEFAULT_RADIUS_M = 150f

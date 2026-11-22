@@ -23,8 +23,8 @@ class RemoteFencesTest {
         assertEquals(listOf("ent_aaaa0001", "ent_aaaa0002"), fences.map { it.id })
         assertEquals("A Cafe", fences[0].name)
         assertEquals(300f, fences[1].radiusMetres, 0f)
-        assertNull(fences[0].label) // no label: a remote fence records, never notifies
-        assertFalse(fences[0].notifiesOnDwell)
+        assertNull(fences[0].label)
+        assertEquals(emptyList<PlaceAction>(), fences[0].actions) // no actions: it only records
         assertEquals(Place.OTHER, fences[0].place)
     }
 
@@ -49,5 +49,28 @@ class RemoteFencesTest {
         assertFalse(RemoteFences.isDue(1_000_000 + 60_000, pick, 51.001, 0.0))
         assertTrue(RemoteFences.isDue(1_000_000 + RemoteFences.REFRESH_AFTER_MS, pick, 51.0, 0.0))
         assertTrue(RemoteFences.isDue(1_000_000 + 60_000, pick, 51.03, 0.0)) // about 3.3 km
+    }
+
+    @Test fun readsRolesAndActionsAndSkipsActionsItCannotRun() {
+        val fences = RemoteFences.parse("""
+            {"fences":[
+              {"id":"ent_bbbb0001","name":"Home","lat":51.0,"lng":0.0,"radius_m":75,"role":"home","actions":[]},
+              {"id":"ent_bbbb0002","name":"Moon Under Water","lat":51.01,"lng":0.0,"radius_m":40,"role":null,
+               "actions":[{"when":"stay","do":"quip","title":"At The Office","list":"pub-quips"},{"when":"stay","do":"quip"},{"when":"soon","do":"notify"}]},
+              {"id":"ent_bbbb0003","name":"Gym","lat":51.02,"lng":0.0,"radius_m":40,"role":"gym","actions":[{"when":"arrive","do":"gym_offer"}]}
+            ]}
+        """.trimIndent())
+        assertEquals(listOf(Place.HOME, Place.OTHER, Place.GYM), fences.map { it.place })
+        assertEquals(listOf(PlaceAction(PlaceAction.When.STAY, PlaceAction.Do.QUIP, title = "At The Office", list = "pub-quips")), fences[1].actions)
+        assertEquals(listOf(PlaceAction(PlaceAction.When.ARRIVE, PlaceAction.Do.GYM_OFFER)), fences[2].actions)
+    }
+
+    @Test fun onceJimboNamesAHomeOrGymItOwnsEveryFence() {
+        val configured = PlaceGeofence.parseList("home|51.0,0.0,150|;gym|51.02,0.0,100|Gym;moons|51.01,0.0,100|The Office|pub-quips")
+        val jimboHome = PlaceGeofence("ent_bbbb0001", 51.0, 0.0, 75f, name = "Home", role = Place.HOME, remoteActions = emptyList())
+        val cafe = PlaceGeofence("ent_bbbb0004", 51.0102, 0.0, 30f, name = "Cafe", remoteActions = emptyList()) // 20 m from the Moons
+        assertEquals(listOf("ent_bbbb0001", "ent_bbbb0004"), RemoteFences.merge(configured, listOf(jimboHome, cafe)).map { it.id })
+        // Before Jimbo names one, the settings file stays, and a remote fence on top of it is dropped as before.
+        assertEquals(listOf("home", "gym", "moons"), RemoteFences.merge(configured, listOf(cafe)).map { it.id })
     }
 }
