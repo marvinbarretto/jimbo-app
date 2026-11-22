@@ -67,7 +67,7 @@ class GeofenceReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                recordTransitions(context, fences, transition, Instant.ofEpochMilli(now))
+                recordTransitions(context, fences, transition, Instant.ofEpochMilli(now), event.triggeringLocation)
                 // A stay goes up now, not at the next 30-minute sync: coaches read it while he is still there.
                 if (transition == Geofence.GEOFENCE_TRANSITION_DWELL) SyncScheduler.enqueueManualSync(context)
                 runActions(context, fences, transition, now)
@@ -104,7 +104,9 @@ class GeofenceReceiver : BroadcastReceiver() {
         }
     }
 
-    private suspend fun recordTransitions(context: Context, fences: List<PlaceGeofence>, transition: Int, at: Instant) {
+    private suspend fun recordTransitions(
+        context: Context, fences: List<PlaceGeofence>, transition: Int, at: Instant, reading: android.location.Location?,
+    ) {
         val type = when (transition) {
             Geofence.GEOFENCE_TRANSITION_ENTER -> "place.enter"
             Geofence.GEOFENCE_TRANSITION_EXIT -> "place.exit"
@@ -123,6 +125,12 @@ class GeofenceReceiver : BroadcastReceiver() {
                     put("place", fence.id)
                     put("radius_m", fence.radiusMetres.toDouble())
                     fence.name?.let { put("name", it) }
+                    // How precise the reading that fired it was, and how far it sat from the circle's centre: never the
+                    // coordinates themselves. It explains a false visit or a long pass (jimbo-api visits, 22 Nov 2026).
+                    reading?.let { r ->
+                        if (r.hasAccuracy()) put("accuracy_m", r.accuracy.toDouble())
+                        put("distance_m", FenceReading.distanceFromCentre(r.latitude, r.longitude, fence).toDouble())
+                    }
                 },
             )
         }
