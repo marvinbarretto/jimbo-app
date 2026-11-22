@@ -3,8 +3,12 @@ package dev.marvinbarretto.jimbo.place
 import dev.marvinbarretto.jimbo.BuildConfig
 
 /**
- * The geofence set, defined here rather than in a UI. Coordinates are private,
- * so they come from local.properties via BuildConfig, never from git:
+ * A geofence. Since 22 Nov 2026 every fence comes from Jimbo (RemoteFences): the saved places, their circles,
+ * roles (home, gym) and actions, all set on the dashboard's /places. The settings-file list below is a fallback
+ * only, used until Jimbo's pick names a Home or Gym place; on the M4 it is empty, kept commented for reference.
+ *
+ * The settings-file format, for that fallback. Coordinates are private, so they come from local.properties via
+ * BuildConfig, never from git:
  *
  * - `jimbo.places` — the list, `id|lat,lng[,radiusMetres]|label|quipList`
  *   joined by `;`. An entry with a label notifies once you have stayed there a
