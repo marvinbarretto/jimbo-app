@@ -56,4 +56,14 @@ object PlaceVisits {
         else edit.putLong("$placeId.since", visit.sinceMillis).putBoolean("$placeId.dwelled", visit.dwelled)
         edit.apply()
     }
+
+    /** An ENTER held back because its reading sat outside the circle; cleared by the gate, and with the visit on exit. */
+    fun arriveHeld(context: Context, placeId: String): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("$placeId.held", false)
+
+    fun setArriveHeld(context: Context, placeId: String, held: Boolean) {
+        val edit = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        if (held) edit.putBoolean("$placeId.held", true) else edit.remove("$placeId.held")
+        edit.apply()
+    }
 }

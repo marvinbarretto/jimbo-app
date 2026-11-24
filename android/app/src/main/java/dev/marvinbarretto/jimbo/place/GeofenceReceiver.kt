@@ -55,13 +55,30 @@ class GeofenceReceiver : BroadcastReceiver() {
         }
         if (fences.isEmpty()) return
 
-        when (transition) {
-            Geofence.GEOFENCE_TRANSITION_EXIT ->
-                if (fences.any { it.place != Place.OTHER && it.place == PlaceStateStore.current(context).first }) {
-                    PlaceStateStore.set(context, Place.OTHER, now)
-                }
-            Geofence.GEOFENCE_TRANSITION_ENTER ->
-                fences.firstOrNull { it.place != Place.OTHER }?.let { PlaceStateStore.set(context, it.place, now) }
+        // Everything above is recorded (with distance_m, accuracy_m) for jimbo-api to judge. Acting on it needs the
+        // reading inside the circle too (docs/checks/2026-11-24-fence-overlap-false-visits.md, 24 Nov 2026). An ENTER
+        // read outside is held, and its ARRIVE actions run at a later DWELL that reads inside. Exit is never gated.
+        val reading = event.triggeringLocation
+        val toRun = mutableListOf<Pair<PlaceGeofence, PlaceAction.When>>()
+        for (fence in fences) {
+            val inside = FenceReading.inside(reading?.latitude, reading?.longitude, fence)
+            if (!inside && reading != null) {
+                Log.d(TAG, "Fired from outside: ${fence.id} ${FenceReading.distanceFromCentre(reading.latitude, reading.longitude, fence).toInt()} m > ${fence.radiusMetres.toInt()} m")
+            }
+            val gate = FenceReading.gate(transition, inside, PlaceVisits.arriveHeld(context, fence.id))
+            PlaceVisits.setArriveHeld(context, fence.id, gate.heldNext)
+            if (gate.arrive) toRun += fence to PlaceAction.When.ARRIVE
+            if (gate.stay) toRun += fence to PlaceAction.When.STAY
+            if (gate.leave) toRun += fence to PlaceAction.When.LEAVE
+        }
+        val arrived = toRun.filter { it.second == PlaceAction.When.ARRIVE }.map { it.first }
+
+        if (transition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+            if (fences.any { it.place != Place.OTHER && it.place == PlaceStateStore.current(context).first }) {
+                PlaceStateStore.set(context, Place.OTHER, now)
+            }
+        } else {
+            arrived.firstOrNull { it.place != Place.OTHER }?.let { PlaceStateStore.set(context, it.place, now) }
         }
 
         val pending = goAsync()
@@ -71,7 +88,7 @@ class GeofenceReceiver : BroadcastReceiver() {
                 // Every arrival, stay and leaving goes up now, not at the next 30-minute sync: Jimbo knows where he is
                 // while he is there (22 Nov 2026: an exit at 14:05 reached Jimbo at 15:32).
                 SyncScheduler.enqueueManualSync(context)
-                runActions(context, fences, transition, now)
+                runActions(context, toRun, now)
             } catch (e: Exception) {
                 Log.e(TAG, "Geofence handling failed", e)
             } finally {
@@ -80,15 +97,9 @@ class GeofenceReceiver : BroadcastReceiver() {
         }
     }
 
-    /** Each fence's actions for this transition (arrive, stay, leave), as set on /places or carried over from the settings file. */
-    private fun runActions(context: Context, fences: List<PlaceGeofence>, transition: Int, now: Long) {
-        val whenever = when (transition) {
-            Geofence.GEOFENCE_TRANSITION_ENTER -> PlaceAction.When.ARRIVE
-            Geofence.GEOFENCE_TRANSITION_DWELL -> PlaceAction.When.STAY
-            Geofence.GEOFENCE_TRANSITION_EXIT -> PlaceAction.When.LEAVE
-            else -> return
-        }
-        for (fence in fences) for (a in fence.actions.filter { it.whenever == whenever }) {
+    /** Each fence's actions for the moments the gate let through (arrive, stay, leave), as set on /places or carried over from the settings file. */
+    private fun runActions(context: Context, toRun: List<Pair<PlaceGeofence, PlaceAction.When>>, now: Long) {
+        for ((fence, whenever) in toRun) for (a in fence.actions.filter { it.whenever == whenever }) {
             val title = a.title ?: "At ${fence.displayName}"
             when (a.action) {
                 PlaceAction.Do.GYM_OFFER -> offerSessionStart(context)
