@@ -100,6 +100,8 @@ object WidgetLinks {
     const val EXTRA_PATH = "jimbo_path"
     const val TODAY = "/m/today"
     const val LOG = "/m/log"
+    // Jimbo proposals notifications (proposals/) open the dashboard's /m/jimbo page.
+    const val JIMBO = "/m/jimbo"
     // The dashboard's /m/log reads `focus=composer` to focus the quick-add input.
     const val LOG_COMPOSER = "/m/log?focus=composer"
 

@@ -25,7 +25,8 @@ class TelemetryStore(private val context: Context) {
             PlaceCollector(),
             WalkCollector(),
             BatteryUsageCollector(context),
-            SleepCollector()
+            SleepCollector(),
+            JimboCollector()
         )
     )
 

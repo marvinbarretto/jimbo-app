@@ -19,6 +19,7 @@ class JimboApplication : Application() {
         // runs anywhere (SM-7959). Kept in case a one-tap confirmation is ever needed.
         // dev.marvinbarretto.jimbo.sleepask.SleepAsk.register(this)
         dev.marvinbarretto.jimbo.nudge.NudgeWorker.schedule(this)
+        dev.marvinbarretto.jimbo.proposals.ProposalsWorker.schedule(this)
 
         // Play Services activity recognition + location registrations don't survive
         // process death. Re-register on every cold start if permissions are already granted.

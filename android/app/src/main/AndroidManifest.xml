@@ -162,6 +162,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".proposals.ProposalVerdictReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".sleepask.SleepAskReceiver"
             android:exported="false" />
 

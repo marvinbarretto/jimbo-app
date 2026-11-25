@@ -16,6 +16,7 @@ object NotificationChannels {
     const val PLACES = "places"
     const val WALK = "walk"
     const val SLEEP = "sleep"
+    const val JIMBO_PROPOSALS = "jimbo_proposals"
 
     fun ensureCreated(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -24,6 +25,8 @@ object NotificationChannels {
                 NotificationChannel(BRIEFING, "Briefing", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(NUDGES, "Nudges", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(GYM, "Gym", NotificationManager.IMPORTANCE_DEFAULT),
+                // What Jimbo would do, to mark right/wrong (proposals/): normal importance, he wants to see them.
+                NotificationChannel(JIMBO_PROPOSALS, "Jimbo proposals", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(PLACES, "Places", NotificationManager.IMPORTANCE_DEFAULT),
                 // The morning "were you asleep?" question (sleep-metric, SM-7959).
                 NotificationChannel(SLEEP, "Sleep question", NotificationManager.IMPORTANCE_DEFAULT),
