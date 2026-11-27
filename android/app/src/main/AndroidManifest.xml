@@ -158,10 +158,6 @@
             android:exported="false" />
 
         <receiver
-            android:name=".nudge.FoodReplyReceiver"
-            android:exported="false" />
-
-        <receiver
             android:name=".proposals.ProposalVerdictReceiver"
             android:exported="false" />
 

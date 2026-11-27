@@ -18,7 +18,9 @@ class JimboApplication : Application() {
         // and Mac activity place onset and wake without asking him, so no question
         // runs anywhere (SM-7959). Kept in case a one-tap confirmation is ever needed.
         // dev.marvinbarretto.jimbo.sleepask.SleepAsk.register(this)
-        dev.marvinbarretto.jimbo.nudge.NudgeWorker.schedule(this)
+        // The food nudge is removed (27 Nov 2026, APP-8366). WorkManager keeps its hourly
+        // job across app updates, so cancel the one an older build saved.
+        androidx.work.WorkManager.getInstance(this).cancelUniqueWork("jimbo_food_nudge")
         dev.marvinbarretto.jimbo.proposals.ProposalsWorker.schedule(this)
 
         // Play Services activity recognition + location registrations don't survive

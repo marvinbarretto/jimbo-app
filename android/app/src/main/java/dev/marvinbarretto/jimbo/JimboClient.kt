@@ -12,18 +12,10 @@ import javax.net.ssl.HttpsURLConnection
  * now sits behind a real certificate (jimbo.fourfoldmedia.uk), and
  * TlsVerificationTest keeps verification switched on.
  */
-object JimboClient : dev.marvinbarretto.jimbo.nudge.FoodLogPoster {
-
+object JimboClient {
 
     fun postTelemetryEvents(jsonBody: String): Pair<Int, String> =
         postJson("/api/telemetry/events", jsonBody)
-
-    override fun postFoodLog(jsonBody: String): Pair<Int, String> =
-        postJson("/api/coach/food-log", jsonBody)
-
-    /** [query] is a raw query string, e.g. `days=2&limit=1`. */
-    fun getFoodLog(query: String): Pair<Int, String> =
-        sendJson("GET", "/api/coach/food-log?$query", null)
 
     fun postGymSession(jsonBody: String): Pair<Int, String> =
         postJson("/api/gym/sessions", jsonBody)
